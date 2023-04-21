@@ -1,0 +1,33 @@
+port: 80
+
+db:
+  host: localhost
+  port: 5432
+  user: postgres
+  pass: ijianxin_2023
+  db: postgres
+  ssl: false
+
+minio:
+  endPoint: 1.14.250.52
+  Region: wiki.jx.com
+  port: 9000
+  useSSL: false
+  accessKey: root
+  secretKey: anhoeXJvb3Q=
+  bucketName: wikipicture
+
+jwt:
+  unit: hours
+  amount: 48
+
+bindIP: 0.0.0.0
+logLevel: info
+logFormat: default
+offline: false
+
+ha: false
+dataPath: D://data/wiki/data
+bodyParserLimit: 5mb
+
+logPath: D://logs/wiki

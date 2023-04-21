@@ -1,0 +1,51 @@
+diff --git a/node_modules/oauth/lib/oauth2.js b/node_modules/oauth/lib/oauth2.js
+index 77241c4..c558ab4 100644
+--- a/node_modules/oauth/lib/oauth2.js
++++ b/node_modules/oauth/lib/oauth2.js
+@@ -195,6 +195,10 @@ exports.OAuth2.prototype.getOAuthAccessToken= function(code, params, callback) {
+         // As of http://tools.ietf.org/html/draft-ietf-oauth-v2-07
+         // responses should be in JSON
+         results= JSON.parse( data );
++        if(results.code!=200){
++          errObj={statusCode:results.code,data:"token认证失败！"}
++          callback(errObj);
++        }
+       }
+       catch(e) {
+         // .... However both Facebook + Github currently use rev05 of the spec
+@@ -203,10 +207,10 @@ exports.OAuth2.prototype.getOAuthAccessToken= function(code, params, callback) {
+         // being thrown
+         results= querystring.parse( data );
+       }
+-      var access_token= results["access_token"];
+-      var refresh_token= results["refresh_token"];
+-      delete results["refresh_token"];
+-      callback(null, access_token, refresh_token, results); // callback results =-=
++      var access_token= results.data ? results.data["access_token"] : ""
++      // var refresh_token= results["refresh_token"];
++      // delete results["refresh_token"];
++      callback(null, access_token, null, results); // callback results =-=
+     }
+   });
+ }
+@@ -217,12 +221,12 @@ exports.OAuth2.prototype.getProtectedResource= function(url, access_token, callb
+ }
+ 
+ exports.OAuth2.prototype.get= function(url, access_token, callback) {
+-  if( this._useAuthorizationHeaderForGET ) {
+-    var headers= {'Authorization': this.buildAuthHeader(access_token) }
+-    access_token= null;
+-  }
+-  else {
+-    headers= {};
++    if( this._useAuthorizationHeaderForGET ) {
++      var headers= {'Authorization': this.buildAuthHeader(access_token) }
++      access_token= null;
++    }
++    else {
++      headers= {};
++    }
++    this._request("GET", url, headers, "", access_token, callback )
+   }
+-  this._request("GET", url, headers, "", access_token, callback );
+-}
