@@ -13,9 +13,11 @@ services:
     restart: unless-stopped
     volumes:
       - db-data:/var/lib/postgresql/data
+    port:
+      - "5432:5432"
 
   wiki:
-    image: requarks/wiki:2
+    image: requarks/wiki:latest
     user: root
     depends_on:
       - db
