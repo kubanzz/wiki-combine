@@ -16,10 +16,10 @@ COPY ./.eslintignore ./.eslintignore
 COPY ./.eslintrc.yml ./.eslintrc.yml
 
 ENV YARN_REGISTRY=https://registry.npm.taobao.org/
-RUN yarn cache clean
+# RUN yarn cache clean
 RUN yarn --frozen-lockfile --non-interactive
 RUN yarn build
-RUN rm -rf /wiki/node_modules
+# RUN rm -rf /wiki/node_modules
 RUN yarn --production --frozen-lockfile --non-interactive
 
 # ===============
