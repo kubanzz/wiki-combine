@@ -3,6 +3,7 @@ services:
 
   db:
     image: postgres:11-alpine
+    user: root
     environment:
       POSTGRES_DB: wiki
       POSTGRES_PASSWORD: wikijsrocks
@@ -15,6 +16,7 @@ services:
 
   wiki:
     image: requarks/wiki:2
+    user: root
     depends_on:
       - db
     environment:
