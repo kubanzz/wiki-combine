@@ -18,3 +18,12 @@ ssl:
 logLevel: $(LOG_LEVEL:info)
 logFormat: $(LOG_FORMAT:default)
 ha: $(HA_ACTIVE)
+
+minio:
+  endPoint: 1.14.250.52
+  Region: wiki.jx.com
+  port: 9000
+  useSSL: false
+  accessKey: root
+  secretKey: anhoeXJvb3Q=
+  bucketName: wikipicture

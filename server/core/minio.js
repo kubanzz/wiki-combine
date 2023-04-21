@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 const Minio = require('minio')
-// WIKI.logger.info('----------mini初始化开始,minio 服务地址:' + WIKI.config.minio.endPoint)
+WIKI.logger.info('----------mini初始化开始,minio 服务地址:' + WIKI.config.minio.endPoint)
 
 const minioClient = new Minio.Client({
   endPoint: WIKI.config.minio.endPoint,
