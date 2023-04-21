@@ -48,7 +48,7 @@
                 //-   v-icon(@click='createFolder(item)') mdi-plus
                 <template v-slot:label="{ item }">
                   <v-hover v-slot:default="{ hover }">
-                    <div @click.stop="onUpdateActive(item)">
+                    <div @click="(event) => onUpdateActive(event, item)">
                       <span v-if="!item.editing">{{item.title}}</span>
                       <v-icon v-if="hover && !item.editing && hasAdminPermission" class="mdi mdi-plus" @click="createFolder(item)" style="margin-left: 70%"></v-icon>
                       //- v-card-actions.grey.pa-2(:class='$vuetify.theme.dark ? `darken-2` : `lighten-1`',  v-if="item.editing")
@@ -279,8 +279,9 @@ export default {
     }
   },
   methods: {
-    async onUpdateActive(item) {
+    async onUpdateActive(event, item) {
       this.currentNode = [item.id]
+      event.stopPropagation()
       console.log('this.openNodes：' + this.openNodes)
     },
     close() {
