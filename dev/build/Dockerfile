@@ -17,10 +17,24 @@ COPY ./.eslintrc.yml ./.eslintrc.yml
 
 ENV YARN_REGISTRY=https://registry.npm.taobao.org/
 # RUN yarn cache clean
-RUN yarn --frozen-lockfile --non-interactive
-RUN yarn build
+# RUN yarn --frozen-lockfile --non-interactive
+# RUN yarn build
 # RUN rm -rf /wiki/node_modules
-RUN yarn --production --frozen-lockfile --non-interactive
+# RUN yarn --production --frozen-lockfile --non-interactive
+
+# 第一次构建时将结果保存到临时镜像中
+RUN --mount=type=cache,target=/tmp/yarn-cache \
+    --mount=type=cache,target=/tmp/yarn-build-cache \
+    yarn --frozen-lockfile --non-interactive --cache-folder=/tmp/yarn-cache \
+    && yarn build \
+    && yarn --production --frozen-lockfile --non-interactive --cache-folder=/tmp/yarn-cache \
+    && cp -R /wiki/node_modules /tmp/yarn-build-cache
+
+# 后续构建时使用缓存
+# RUN --mount=type=cache,target=/tmp/yarn-cache \
+#     --mount=type=cache,target=/tmp/yarn-build-cache \
+#     yarn --frozen-lockfile --non-interactive --cache-folder=/tmp/yarn-cache \
+#     && cp -R /tmp/yarn-build-cache/node_modules /wiki/
 
 # ===============
 # --- Release ---
