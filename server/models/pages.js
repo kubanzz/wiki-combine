@@ -1308,6 +1308,8 @@ module.exports = class Page extends Model {
     // await WIKI.models.knex.destroy()
 
     WIKI.logger.info(`Rebuilding create page tree: [ COMPLETED ]`)
+
+    return tree ? tree[0].id : undefined
   }
 }
 

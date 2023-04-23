@@ -330,6 +330,7 @@ export default {
       const itemFolders = _.filter(items, ['isFolder', true]).map(f => ({...f, children: []}))
       const itemPages = _.filter(items, i => i.pageId > 0)
 
+      console.log('itemFolders：%o', itemFolders)
       if (itemFolders.length > 0) {
         item.children = itemFolders
       } else {
@@ -350,7 +351,8 @@ export default {
         children: [],
         editing: true,
         isFolder: true,
-        path: ''
+        path: '',
+        parent: item.id
       }
       await this.fetchFolders(item)
       if (!item.children) {
@@ -374,7 +376,7 @@ export default {
         const input = document.getElementById(`input-${newFolder.id}`)
         input.focus()
         input.select()
-        input.addEventListener('blur', () => {
+        input.addEventListener('blur', async () => {
           if (newFolder.editing === true) {
             newFolder.editing = false
             if (item.path !== undefined) {
@@ -382,11 +384,13 @@ export default {
             }
             newFolder.path += ('/' + input.value)
             console.log('item.path：' + newFolder.path)
-            this.uploadFolder(input, item, folderId)
+            let uploadFolderId = await this.uploadFolder(input, item, folderId)
+            newFolder.id = uploadFolderId
+            await this.fetchFolders(item)
           }
         })
 
-        input.addEventListener('keydown', (event) => {
+        input.addEventListener('keydown', async (event) => {
           if (event.key === 'Enter' || event.key === 'Esc') {
             if (newFolder.editing === true) {
               newFolder.editing = false
@@ -394,7 +398,9 @@ export default {
                 newFolder.path += item.path
               }
               newFolder.path += ('/' + input.value)
-              this.uploadFolder(input, item, folderId)
+              let uploadFolderId = await this.uploadFolder(input, item, folderId)
+              newFolder.id = uploadFolderId
+              await this.fetchFolders(item)
             }
           }
         })
@@ -428,7 +434,8 @@ export default {
                   errorCode
                   slug
                   message
-                }
+                },
+                pageId
               }
             }
           }
@@ -438,7 +445,7 @@ export default {
           locale: this.$store.get('page/locale')
         }
       })
-      console.log('resp', resp)
+      console.log('add page resp：', resp)
       resp = _.get(resp, 'data.pages.create', {})
     }
   }

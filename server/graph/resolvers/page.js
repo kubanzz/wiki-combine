@@ -668,9 +668,10 @@ module.exports = {
           path: args.path,
           localeCode: args.locale
         }
-        await WIKI.models.pages.rebuildSingalTree(page, true)
+        let pageId = await WIKI.models.pages.rebuildSingalTree(page, true)
         return {
-          responseResult: graphHelper.generateSuccess('Page tree add successfully.')
+          responseResult: graphHelper.generateSuccess('Page tree add successfully.'),
+          pageId
         }
       } catch (err) {
         return graphHelper.generateError(err)

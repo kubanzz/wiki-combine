@@ -141,7 +141,7 @@ type PageMutation {
   addPageTree(
     path: String!,
     locale: String!
-  ): DefaultResponse @auth(requires: ["manage:system"])
+  ): PageAddResponse @auth(requires: ["manage:system"])
 
   render(id: Int!): DefaultResponse @auth(requires: ["manage:system"])
 
@@ -164,6 +164,11 @@ type PageResponse {
 type PageMigrationResponse {
   responseResult: ResponseStatus!
   count: Int
+}
+
+type PageAddResponse {
+  responseResult: ResponseStatus!
+  pageId: Int
 }
 
 type Page {
