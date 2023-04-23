@@ -38,17 +38,15 @@
                 item-id='path'
                 item-text='title'
                 dense
-                activatable
-                hoverable
-                open-on-click
+                activatable=true
                 )
                 template(slot='prepend', slot-scope='{ item, open, leaf }')
                   v-icon mdi-{{ open ? 'folder-open' : 'folder' }}
                 //- template(slot='append', slot-scope='{ item, open, leaf }')
                 //-   v-icon(@click='createFolder(item)') mdi-plus
-                <template v-slot:label="{ item }">
+                <template v-slot:label="{ item }"  @click="(event) => onUpdateActive(event, item)">
                   <v-hover v-slot:default="{ hover }">
-                    <div @click="(event) => onUpdateActive(event, item)">
+                    <div>
                       <span v-if="!item.editing">{{item.title}}</span>
                       <v-icon v-if="hover && !item.editing && hasAdminPermission" class="mdi mdi-plus" @click="createFolder(item)" style="margin-left: 70%"></v-icon>
                       //- v-card-actions.grey.pa-2(:class='$vuetify.theme.dark ? `darken-2` : `lighten-1`',  v-if="item.editing")
