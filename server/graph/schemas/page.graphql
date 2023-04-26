@@ -121,6 +121,17 @@ type PageMutation {
     destinationLocale: String!
   ): DefaultResponse @auth(requires: ["manage:pages", "manage:system"])
 
+  batchMove(
+    sourceObjectArray: [SourceObject]!
+    targetPath: String!
+  ): DefaultResponse @auth(requires: ["manage:pages", "manage:system"])
+
+  updateFolderPath(
+    oldPath: String!
+    newPath: String!
+    isFolder: Boolean!
+  ): DefaultResponse @auth(requires: ["manage:pages", "manage:system"])
+
   delete(id: Int!): DefaultResponse
     @auth(requires: ["delete:pages", "manage:system"])
 
@@ -155,6 +166,11 @@ type PageMutation {
 # -----------------------------------------------
 # TYPES
 # -----------------------------------------------
+
+input SourceObject {
+  path: String!
+  isFolder: Boolean!
+}
 
 type PageResponse {
   responseResult: ResponseStatus!
@@ -287,7 +303,8 @@ type PageTreeItem {
   parent: Int
   pageId: Int
   locale: String!
-  children: [String]
+  children: [String],
+  ancestors: [Int]
 }
 
 type pageTree {

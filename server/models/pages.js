@@ -848,6 +848,284 @@ module.exports = class Page extends Model {
     })
   }
 
+  static async updateFolderPath(opts) {
+    let oldPath = opts.oldPath
+    let newPath = opts.newPath
+    const isFolder = opts.isFolder
+
+    // -> Validate path
+    if (oldPath.includes('.') || oldPath.includes(' ') || oldPath.includes('\\') || oldPath.includes('//')) {
+      throw new WIKI.Error.PageIllegalPath()
+    }
+    if (newPath.includes('.') || newPath.includes(' ') || newPath.includes('\\') || newPath.includes('//')) {
+      throw new WIKI.Error.PageIllegalPath()
+    }
+
+    let updatedPages = []
+    if (isFolder) {
+      // 去除地址前后的'/'
+      oldPath = oldPath.trim().replace(/^\/|\/$/g, '')
+      // // 去除叶子文件夹
+      // let subPath = _.initial(oldPath.split('/')).join('/')
+
+      // 避免更新到文件名前缀与路径相同的
+      oldPath += '/'
+      updatedPages = await WIKI.models.knex.table('pages')
+        .where('path', 'like', `${oldPath}%`)
+        .update({
+          path: WIKI.models.knex.raw(`concat('${newPath}', substring(path, ${oldPath.length + 1}))`)
+        }).returning('*')
+
+      // 删除被更新到的文件夹的目录树
+      await WIKI.models.knex.table('pageTree')
+        .where('path', 'like', `${oldPath}%`) // 删除文件目录树
+        .orWhere('path', opts.oldPath) // 删除文件夹目录树
+        .delete()
+    } else {
+      // 更新移动的文件路径（移动文件）
+      updatedPages = await WIKI.models.knex.table('pages')
+        .where('path', oldPath)
+        .update({
+          path: newPath
+        }).returning('*')
+
+      // 删除移动的文件的目录树
+      await WIKI.models.knex.table('pageTree')
+        .where('path', oldPath)
+        .delete()
+    }
+
+    for (let i = 0; i < updatedPages.length; i++) {
+      await this.rebuildSingalTree(updatedPages[i])
+    }
+  }
+
+  /**
+   * batch move Pages and folders
+   *
+   * @param {Object} opts Page Properties
+   * @returns {Promise} Promise with no value
+   */
+  static async batchMovePage(opts) {
+    // let page
+    // if (_.has(opts, 'id')) {
+    //   page = await WIKI.models.pages.query().findById(opts.id)
+    // } else {
+    //   page = await WIKI.models.pages.query().findOne({
+    //     path: opts.path,
+    //     localeCode: opts.locale
+    //   })
+    // }
+    // if (!page) {
+    //   throw new WIKI.Error.PageNotFound()
+    // }
+
+    // // -> Validate path
+    // if (opts.destinationPath.includes('.') || opts.destinationPath.includes(' ') || opts.destinationPath.includes('\\') || opts.destinationPath.includes('//')) {
+    //   throw new WIKI.Error.PageIllegalPath()
+    // }
+
+    // // -> Remove trailing slash
+    // if (opts.destinationPath.endsWith('/')) {
+    //   opts.destinationPath = opts.destinationPath.slice(0, -1)
+    // }
+
+    // // -> Remove starting slash
+    // if (opts.destinationPath.startsWith('/')) {
+    //   opts.destinationPath = opts.destinationPath.slice(1)
+    // }
+
+    // // -> Check for source page access
+    // if (!WIKI.auth.checkAccess(opts.user, ['manage:pages'], {
+    //   locale: page.localeCode,
+    //   path: page.path
+    // })) {
+    //   throw new WIKI.Error.PageMoveForbidden()
+    // }
+    // // -> Check for destination page access
+    // if (!WIKI.auth.checkAccess(opts.user, ['write:pages'], {
+    //   locale: opts.destinationLocale,
+    //   path: opts.destinationPath
+    // })) {
+    //   throw new WIKI.Error.PageMoveForbidden()
+    // }
+
+    // // -> Check for existing page at destination path
+    // const destPage = await WIKI.models.pages.query().findOne({
+    //   path: opts.destinationPath,
+    //   localeCode: opts.destinationLocale
+    // })
+    // if (destPage) {
+    //   throw new WIKI.Error.PagePathCollision()
+    // }
+
+    // // -> Create version snapshot  ！！！！
+    // await WIKI.models.pageHistory.addVersion({
+    //   ...page,
+    //   action: 'moved',
+    //   versionDate: page.updatedAt
+    // })
+
+    // const destinationHash = pageHelper.generateHash({ path: opts.destinationPath, locale: opts.destinationLocale, privateNS: opts.isPrivate ? 'TODO' : '' })
+
+    // -> Move page
+    // const destinationTitle = (page.title === _.last(page.path.split('/')) ? _.last(opts.destinationPath.split('/')) : page.title)
+    // await WIKI.models.pages.query().patch({
+    //   path: opts.destinationPath,
+    //   localeCode: opts.destinationLocale,
+    //   title: destinationTitle,
+    //   hash: destinationHash
+    // }).findById(page.id)
+    // await WIKI.models.pages.deletePageFromCache(page.hash)
+    // WIKI.events.outbound.emit('deletePageFromCache', page.hash)
+
+    let sourceObjArray = opts.sourceObjectArray
+
+    // 校验移动的文件是否已经存在同名文件/文件夹
+    for (let i = 0; i < sourceObjArray.length; i++) {
+      let sourceObj = sourceObjArray[i]
+      let sourcePath = sourceObj.path
+
+      if (await this.hasConflicFile(sourcePath, opts.targetPath)) {
+        throw new WIKI.Error.TargetPageExist()
+      }
+    }
+
+    for (let i = 0; i < sourceObjArray.length; i++) {
+      let sourceObj = sourceObjArray[i]
+      let sourcePath = sourceObj.path
+      const isFolder = sourceObj.isFolder
+
+      if (await this.hasConflicFile(sourcePath, opts.targetPath)) {
+        throw new WIKI.Error.TargetPageExist()
+      }
+
+      let updatedPages = []
+      if (isFolder) {
+        // 去除地址前后的'/'
+        let targetPath = opts.targetPath.trim().replace(/^\/|\/$/g, '')
+        // 去除叶子文件夹
+        let subPath = _.initial(sourcePath.split('/')).join('/')
+
+        // targetPath非根目录则补'/'
+        if (targetPath !== '') {
+          targetPath += '/'
+        }
+        // sourcePath非根目录下的文件夹则补'/'
+        if (subPath !== '') {
+          subPath += '/'
+        }
+
+        // 避免更新到文件名前缀与路径相同的
+        sourcePath += '/'
+        // 更新移动的文件夹下所有文件的路径（finalPath = targetPath + 数据库中移动的文件夹及其后面的path）
+        updatedPages = await WIKI.models.knex.table('pages')
+          .where('path', 'like', `${sourcePath}%`)
+          .update({
+            path: WIKI.models.knex.raw(`concat('${targetPath}', substring(path, ${subPath.length + 1}))`)
+          }).returning('*')
+
+        // 删除移动的文件夹的目录树
+        await WIKI.models.knex.table('pageTree')
+          .where('path', 'like', `${sourcePath}%`) // 删除文件目录树
+          .orWhere('path', sourceObj.path) // 删除文件夹目录树
+          .delete()
+      } else {
+        let targetPath = opts.targetPath
+        // 更新移动的文件路径（移动文件）
+        let fileName = _.last(sourcePath.split('/'))
+        targetPath += ('/' + fileName)
+        updatedPages = await WIKI.models.knex.table('pages')
+          .where('path', sourcePath)
+          .update({
+            path: targetPath
+          }).returning('*')
+
+        // 删除移动的文件的目录树
+        await WIKI.models.knex.table('pageTree')
+          .where('path', sourcePath)
+          .delete()
+      }
+
+      for (let i = 0; i < updatedPages.length; i++) {
+        await this.rebuildSingalTree(updatedPages[i])
+      }
+    }
+
+    // -> Rebuild page tree
+    // await WIKI.models.pages.rebuildTree()
+
+    // let newPageInfo = {
+    //   path: opts.destinationPath,
+    //   localeCode: opts.destinationLocale,
+    //   title: destinationTitle,
+    //   id: page.id,
+    //   isPrivate: page.isPrivate,
+    //   privateNS: page.privateNS
+    // }
+    // await WIKI.models.pages.rebuildSingalTree(newPageInfo)
+
+    // -> Rename in Search Index
+    // const pageContents = await WIKI.models.pages.query().findById(page.id).select('render')
+    // page.safeContent = WIKI.models.pages.cleanHTML(pageContents.render)
+    // await WIKI.data.searchEngine.renamed({
+    //   ...page,
+    //   destinationPath: opts.destinationPath,
+    //   destinationLocaleCode: opts.destinationLocale,
+    //   title: destinationTitle,
+    //   destinationHash
+    // })
+
+    // -> Rename in Storage
+    // if (!opts.skipStorage) {
+    //   await WIKI.models.storage.pageEvent({
+    //     event: 'renamed',
+    //     page: {
+    //       ...page,
+    //       destinationPath: opts.destinationPath,
+    //       destinationLocaleCode: opts.destinationLocale,
+    //       destinationHash,
+    //       moveAuthorId: opts.user.id,
+    //       moveAuthorName: opts.user.name,
+    //       moveAuthorEmail: opts.user.email
+    //     }
+    //   })
+    // }
+
+    // -> Reconnect Links : Changing old links to the new path
+    // await WIKI.models.pages.reconnectLinks({
+    //   sourceLocale: page.localeCode,
+    //   sourcePath: page.path,
+    //   locale: opts.destinationLocale,
+    //   path: opts.destinationPath,
+    //   mode: 'move'
+    // })
+
+    // -> Reconnect Links : Validate invalid links to the new path
+    // await WIKI.models.pages.reconnectLinks({
+    //   locale: opts.destinationLocale,
+    //   path: opts.destinationPath,
+    //   mode: 'create'
+    // })
+  }
+
+  static async hasConflicFile (sourcePath, targetPath) {
+    let sourceMoveFileName = _.last(sourcePath.split('/'))
+    targetPath = targetPath.trim().replace(/^\/|\/$/g, '')
+
+    if (targetPath !== '') {
+      targetPath += '/'
+    }
+    targetPath += sourceMoveFileName
+
+    const result = await WIKI.models.knex.table('pageTree')
+      .where('path', targetPath)
+      .count('*')
+      .first()
+    const count = parseInt(result.count)
+    return count > 0
+  }
+
   /**
    * Delete an Existing Page
    *
@@ -1268,6 +1546,7 @@ module.exports = class Page extends Model {
         path: currentPath
       })
       if (!found) {
+        console.log('文件不存在，开始保存')
         Atomics.add(WIKI.treeKeyCounter, 0, 1)
         tree.push({
           id: Atomics.load(WIKI.treeKeyCounter, 0),
@@ -1309,7 +1588,7 @@ module.exports = class Page extends Model {
 
     WIKI.logger.info(`Rebuilding create page tree: [ COMPLETED ]`)
 
-    return tree ? tree[0].id : undefined
+    return tree && tree.legth > 0 ? tree[0].id : undefined
   }
 }
 

@@ -563,6 +563,40 @@ module.exports = {
       }
     },
     /**
+     * BATCH MOVE PAGE
+     */
+    async batchMove(obj, args, context) {
+      try {
+        await WIKI.models.pages.batchMovePage({
+          ...args,
+          user: context.req.user
+        })
+        return {
+          responseResult: graphHelper.generateSuccess('文件移动成功！')
+        }
+      } catch (err) {
+        console.log(err)
+        return graphHelper.generateError(err)
+      }
+    },
+    /**
+     * UPDATE FOLDER Path
+     */
+    async updateFolderPath(obj, args, context) {
+      try {
+        await WIKI.models.pages.updateFolderPath({
+          ...args,
+          user: context.req.user
+        })
+        return {
+          responseResult: graphHelper.generateSuccess('文件移动成功！')
+        }
+      } catch (err) {
+        console.log(err)
+        return graphHelper.generateError(err)
+      }
+    },
+    /**
      * DELETE PAGE
      */
     async delete(obj, args, context) {

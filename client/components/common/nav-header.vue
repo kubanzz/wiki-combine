@@ -100,7 +100,7 @@
           //- PAGE ACTIONS
 
           template(v-if='hasAnyPagePermissions && path && mode !== `edit`')
-            v-menu(offset-y, bottom, transition='slide-y-transition', left)
+            v-menu(v-if='path != `home`', offset-y, bottom, transition='slide-y-transition', left)
               template(v-slot:activator='{ on: menu, attrs }')
                 v-tooltip(bottom)
                   template(v-slot:activator='{ on: tooltip }')
@@ -143,6 +143,27 @@
                 v-list-item.pl-4(@click='pageDelete', v-if='hasDeletePagesPermission')
                   v-list-item-avatar(size='24', tile): v-icon(color='red darken-2') mdi-trash-can-outline
                   v-list-item-title.body-2 {{$t('common:header.delete')}}
+            v-menu(v-else-if='path == `home`', offset-y, bottom, transition='slide-y-transition', left)
+              template(v-slot:activator='{ on: menu, attrs }')
+                v-tooltip(bottom)
+                  template(v-slot:activator='{ on: tooltip }')
+                    v-btn(
+                      icon
+                      v-bind='attrs'
+                      v-on='{ ...menu, ...tooltip }'
+                      :class='$vuetify.rtl ? `ml-3` : ``'
+                      tile
+                      height='64'
+                      :aria-label='$t(`common:header.pageActions`)'
+                      )
+                      v-icon(color='grey') mdi-file-document-edit-outline
+                  span 文件操作
+              v-list(nav, :light='!$vuetify.theme.dark', :dark='$vuetify.theme.dark', :class='$vuetify.theme.dark ? `grey darken-4` : ``')
+                .overline.pa-4.grey--text {{$t('操作')}}
+                v-list-item.pl-4(@click='batchPageMove', v-if='hasManagePagesPermission')
+                  v-list-item-avatar(size='24', tile): v-icon(color='indigo') mdi-content-save-move-outline
+                  v-list-item-content
+                    v-list-item-title.body-2 批量操作
             v-divider(vertical)
 
           //- NEW PAGE
@@ -218,6 +239,7 @@
 
     page-selector(mode='create', v-model='newPageModal', :open-handler='pageNewCreate', :locale='locale')
     page-selector(mode='move', v-model='movePageModal', :open-handler='pageMoveRename', :path='path', :locale='locale')
+    page-selector(mode='batch-move', v-model='batchMovePageModal', :open-handler='pageMoveRename', :path='path', :locale='locale')
     page-selector(mode='create', v-model='duplicateOpts.modal', :open-handler='pageDuplicateHandle', :path='duplicateOpts.path', :locale='duplicateOpts.locale')
     page-delete(v-model='deletePageModal', v-if='path && path.length')
     page-convert(v-model='convertPageModal', v-if='path && path.length')
@@ -254,6 +276,7 @@ export default {
       searchAdvMenuShown: false,
       newPageModal: false,
       movePageModal: false,
+      batchMovePageModal: false,
       convertPageModal: false,
       deletePageModal: false,
       locales: siteLangs,
@@ -405,6 +428,9 @@ export default {
     },
     pageMove () {
       this.movePageModal = true
+    },
+    batchPageMove () {
+      this.batchMovePageModal = true
     },
 
     async pageMoveRename ({ path, locale }) {

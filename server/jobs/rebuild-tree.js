@@ -54,6 +54,25 @@ module.exports = async (pageId) => {
       }
     }
 
+    // await WIKI.models.knex.transaction(async trx => {
+    //   trx.table('pageTree').truncate()
+    //   if (tree.length > 0) {
+    //     if (WIKI.config.db.type !== 'sqlite') {
+    //       for (const chunk of _.chunk(tree, 100)) {
+    //         await trx.table('pageTree').insert(chunk).onConflict('id').merge()
+    //       }
+    //     } else {
+    //       for (const chunk of _.chunk(tree, 60)) {
+    //         await trx.table('pageTree').insert(chunk).onConflict('id').merge()
+    //       }
+    //     }
+    //   }
+    //   WIKI.logger.info(`模拟10s延时`)
+    //   // await sleep(12 * 1000)
+    //   WIKI.logger.info(`模拟结束`)
+    //   await trx.commit()
+    // })
+
     await WIKI.models.knex.table('pageTree').truncate()
     if (tree.length > 0) {
       // -> Save in chunks, because of per query max parameters (35k Postgres, 2k MSSQL, 1k for SQLite)

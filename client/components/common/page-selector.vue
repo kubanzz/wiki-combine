@@ -5,7 +5,7 @@
     overlay-color='blue darken-4'
     overlay-opacity='.7'
     )
-    v-card.page-selector(:minWidth=818)
+    v-card.page-selector(v-if='mode !== `batch-move`' :minWidth=818)
       .dialog-header.is-blue
         v-icon.mr-3(color='white') mdi-page-next-outline
         .body-1(v-if='mode === `create`') {{$t('common:pageSelector.createTitle')}}
@@ -24,10 +24,11 @@
           v-toolbar(color='grey darken-3', dark, dense, flat)
             .body-2 {{$t('common:pageSelector.virtualFolders')}}
             v-spacer
-            v-btn(icon, tile, href='https://docs.requarks.io/guide/pages#folders', target='_blank')
+            v-btn(v-if="path === `home` && mode === 'move'" icon, tile, href='https://docs.requarks.io/guide/pages#folders', target='_blank')
               v-icon mdi-help-box
           div(style='height:400px;')
             vue-scroll(:ops='scrollStyle')
+
               v-treeview(
                 :key='`pageTree-` + treeViewCacheId'
                 :active.sync='currentNode'
@@ -42,9 +43,7 @@
                 )
                 template(slot='prepend', slot-scope='{ item, open, leaf }')
                   v-icon mdi-{{ open ? 'folder-open' : 'folder' }}
-                //- template(slot='append', slot-scope='{ item, open, leaf }')
-                //-   v-icon(@click='createFolder(item)') mdi-plus
-                <template v-slot:label="{ item }"  @click="(event) => onUpdateActive(event, item)">
+                <template v-slot:label="{ item }">
                   <v-hover v-slot:default="{ hover }">
                     <div>
                       <span v-if="!item.editing">{{item.title}}</span>
@@ -66,9 +65,11 @@
                   color='primary'
                   )
                   template(v-for='(page, idx) of currentPages')
-                    v-list-item(:key='`page-` + page.id', :value='page' , :disabled="!hasAdminPermission")
-                      v-list-item-icon: v-icon mdi-text-box
-                      v-list-item-title {{page.title}}
+                    <div style="display: flex; align-items: center; justify-content: center;">
+                      v-list-item(:key='`page-` + page.id', :value='page' , :disabled="!hasAdminPermission")
+                        v-list-item-icon: v-icon mdi-text-box
+                        v-list-item-title {{page.title}}
+                    </div>
                     v-divider(v-if='idx < pages.length - 1')
           v-alert.animated.fadeIn(
             v-else
@@ -104,7 +105,137 @@
       v-card-chin
         v-spacer
         v-btn(text, @click='close') {{$t('common:actions.cancel')}}
-        v-btn.px-4(color='primary', @click='open', :disabled='!isValidPath')
+        v-btn.px-4(v-if="mode === 'move'" color='primary', @click='open', :disabled='!isValidPath')
+          v-icon(left) mdi-check
+          span {{$t('common:actions.move')}}
+        v-btn.px-4(v-else-if="mode !== 'batch-move'" color='primary', @click='open', :disabled='!isValidPath')
+          v-icon(left) mdi-check
+          span {{$t('common:actions.select')}}
+
+    v-card.page-selector(v-else-if='mode === `batch-move`' :minWidth=818)
+      .dialog-header.is-blue
+        v-icon.mr-3(color='white') mdi-page-next-outline
+        .body-1 {{$t('common:pageSelector.moveTitle')}}
+        v-spacer
+        v-progress-circular(
+          indeterminate
+          color='white'
+          :size='20'
+          :width='2'
+          v-show='searchLoading'
+          )
+      .d-flex
+        v-flex.grey(xs6, :class='$vuetify.theme.dark ? `darken-4` : `lighten-3`')
+          v-toolbar(color='grey darken-3', dark, dense, flat)
+            .body-2 {{$t('源文件夹')}}
+            v-spacer
+            v-btn(v-if="path === `home` && mode === 'batch-move'" icon, tile, target='_blank')
+              v-icon mdi-delete
+          div(style='height:400px;')
+            vue-scroll(:ops='scrollStyle')
+
+              v-treeview(
+                :key='`pageTree-` + treeViewCacheId'
+                ref="moveSourceTreeview"
+                :active.sync='currentNode'
+                :open.sync='openNodes'
+                :items='tree'
+                :load-children='fetchFoldersAndPages'
+                expand-icon='mdi-menu-down-outline'
+                item-id='path'
+                item-text='title'
+                dense
+                open-on-click
+                )
+                template(slot='prepend', slot-scope='{ item, open, leaf }')
+                  <div style="display: flex; align-items: center; justify-content: center;">
+                    v-checkbox(v-if='mode === `batch-move` && path === `home` && item.id  !== 0'
+                      hide-details class="mr-2" style="display: contents;" v-model="item.checked" @change="onCheckboxChange($event, item)" @click.stop)
+                    v-icon mdi-{{leaf ? (item.isFolder ? (open ? 'folder-open' : 'folder') : 'text-box') : (open ? 'folder-open' : 'folder')}}
+                  </div>
+                <template v-slot:label="{ item }">
+                  <v-hover v-slot:default="{ hover }">
+                    <div>
+                      <span v-if="!item.editing">{{item.title}}</span>
+                      //- v-card-actions.grey.pa-2(:class='$vuetify.theme.dark ? `darken-2` : `lighten-1`',  v-if="item.editing")
+                      <v-text-field v-if="item.editing" v-model="item.title" :ref="`input-${item.id}`" :id="`input-${item.id}`" hide-details solo hide-details dense flat clearable>
+                      </v-text-field>
+                    </div>
+                  </v-hover>
+                </template>
+        //- v-flex(xs7)
+        //-   v-toolbar(color='blue darken-2', dark, dense, flat)
+        //-     .body-2 {{$t('common:pageSelector.pages')}}
+        //-   div(v-if='currentPages.length > 0 ', style='height:400px;')
+        //-     vue-scroll(:ops='scrollStyle')
+        //-       v-list.py-0(dense)
+        //-         v-list-item-group(
+        //-           v-model='currentPage'
+        //-           color='primary'
+        //-           )
+        //-           template(v-for='(page, idx) of currentPages')
+        //-             <div style="display: flex; align-items: center; justify-content: center;">
+        //-               v-list-item(:key='`page-` + page.id', :value='page' , :disabled="!hasAdminPermission")
+        //-                 div
+        //-                   v-checkbox(v-if='mode === `batch-move` && path === `home`' v-model="page.checked" hide-details @change="onCheckboxChange($event, page)"
+        //-                     class="mr-2" style = "display: contents; width: auto;")
+        //-                 v-list-item-icon: v-icon mdi-text-box
+        //-                 v-list-item-title {{page.title}}
+        //-             </div>
+        //-             v-divider(v-if='idx < pages.length - 1')
+        //-   v-alert.animated.fadeIn(
+        //-     v-else
+        //-     text
+        //-     color='orange'
+        //-     prominent
+        //-     icon='mdi-alert'
+        //-     )
+        //-     .body-2 {{$t('common:pageSelector.folderEmptyWarning')}}
+
+        v-flex(xs6)
+          v-toolbar(color='blue darken-2', dark, dense, flat)
+            .body-2 {{$t('目标文件夹')}}
+            v-spacer
+            v-btn(v-if="path === `home` && mode === 'move'" icon, tile, href='https://docs.requarks.io/guide/pages#folders', target='_blank')
+              v-icon mdi-help-box
+          div(style='height:400px;')
+            vue-scroll(:ops='scrollStyle')
+
+              v-treeview(
+                :key='`pageTree-` + treeViewCacheId'
+                :active.sync='batchMove_currentNode'
+                ref="moveTargetTreeview"
+                @update:active="onNodeActivated"
+                :open.sync='batchMove_openNodes'
+                :items='batchMove_tree'
+                :load-children='fetchFolders'
+                expand-icon='mdi-menu-down-outline'
+                item-id='path'
+                item-text='title'
+                dense
+                activatable=true
+                )
+                template(slot='prepend', slot-scope='{ item, open, leaf }')
+                  v-icon(v-if="item.isFolder === true || item.id === 0") mdi-{{ open ? 'folder-open' : 'folder' }}
+                <template v-slot:label="{ item }">
+                  <v-hover v-if="item.isFolder === true || item.id === 0" v-slot:default="{ hover }">
+                    <div>
+                      <span v-if="!item.editing">{{item.title}}</span>
+                      <v-icon v-if="hover && !item.editing && hasAdminPermission" class="mdi mdi-plus" @click="createFolder(item, true)" style="margin-left: 70%"></v-icon>
+                      <v-icon v-if="hover && !item.editing && hasAdminPermission" class="mdi mdi-pencil" @click="editFolder(item)" style="margin-left: 2%"></v-icon>
+                      <v-text-field v-if="item.editing" v-model="item.title" :ref="`input-${item.id}`" :id="`input-${item.id}`" hide-details solo dense flat clearable>
+                      </v-text-field>
+                    </div>
+                  </v-hover>
+                </template>
+
+      v-card-chin
+        v-spacer
+        v-btn(text, @click='close') {{$t('common:actions.cancel')}}
+        v-btn.px-4(v-if="mode === 'batch-move'" color='primary', @click='batchMove', :disabled='!isValidPath')
+          v-icon(left) mdi-check
+          span {{$t('common:actions.move')}}
+        v-btn.px-4(v-else-if="mode !== 'batch-move'" color='primary', @click='open', :disabled='!isValidPath')
           v-icon(left) mdi-check
           span {{$t('common:actions.select')}}
 </template>
@@ -155,6 +286,17 @@ export default {
       currentPage: null,
       currentNode: [0],
       openNodes: [0],
+      batchMove_currentPath: '',
+      batchMove_currentNode: [0],
+      batchMove_openNodes: [0],
+      checkBoxSelectedArray: [],
+      batchMove_tree: [
+        {
+          id: 0,
+          title: '/' + ' (root)',
+          children: []
+        }
+      ],
       tree: [
         {
           id: 0,
@@ -234,7 +376,8 @@ export default {
       } else {
         const current = _.find(this.all, ['id', newValue[0]])
 
-        if (this.openNodes.indexOf(newValue[0]) < 0) { // auto open and load children
+        let index = this.openNodes.indexOf(newValue[0])
+        if (index < 0) { // auto open and load children
           if (current) {
             if (this.openNodes.indexOf(current.parent) < 0) {
               this.$nextTick(() => {
@@ -248,6 +391,32 @@ export default {
         }
 
         this.currentPath = _.compact([_.get(current, 'path', ''), _.last(this.currentPath.split('/'))]).join('/')
+      }
+    },
+    batchMove_currentNode (newValue, oldValue) {
+      console.log('batchMove_currentNode --- ' + newValue + ' --- ' + oldValue)
+      if (newValue.length < 1) { // force a selection
+        this.$nextTick(() => {
+          this.batchMove_currentNode = oldValue
+        })
+      } else {
+        const current = _.find(this.all, ['id', newValue[0]])
+
+        let index = this.batchMove_openNodes.indexOf(newValue[0])
+        if (index < 0) { // auto open and load children
+          if (current) {
+            if (this.batchMove_openNodes.indexOf(current.parent) < 0) {
+              this.$nextTick(() => {
+                this.batchMove_openNodes.push(current.parent)
+              })
+            }
+          }
+          this.$nextTick(() => {
+            this.batchMove_openNodes.push(newValue[0])
+          })
+        }
+
+        //- this.batchMove_currentPath = _.compact([_.get(current, 'path', ''), _.last(this.batchMove_currentPath.split('/'))]).join('/')
       }
     },
     currentPage (newValue, oldValue) {
@@ -277,10 +446,164 @@ export default {
     }
   },
   methods: {
-    async onUpdateActive(event, item) {
-      this.currentNode = [item.id]
-      event.stopPropagation()
-      console.log('this.openNodes：' + this.openNodes)
+    onNodeActivated(item) {
+      const target = this.all.find(obj => obj.id === item[0])
+      if (target) {
+        this.batchMove_currentPath = target.path
+      } else {
+        if (item[0] === undefined || item[0] === 0) {
+          this.batchMove_currentPath = '/'
+        } else {
+          console.log('目标文件夹不存在，请重新选择')
+        }
+      }
+      console.log('all：%o --- target：%o', this.all, item)
+    },
+    async batchMove() {
+      if (this.checkBoxSelectedArray.length === 0) {
+        alert('请选择要移动的文件夹')
+        return
+      }
+      if (this.batchMove_currentPath === '') {
+        alert('请选择目标文件夹路径')
+        return
+      }
+      const sourceObjectArray = this.checkBoxSelectedArray.map(obj => {
+        return { path: obj.path, isFolder: obj.isFolder }
+      })
+      console.log('移动文件：%o --- 目的地文件夹：%o --- 当前树结构：%o', this.checkBoxSelectedArray, this.batchMove_currentPath, this.all)
+
+      const resp = await this.$apollo.mutate({
+        mutation: gql`
+          mutation (
+            $sourceObjectArray: [SourceObject]!
+            $targetPath: String!
+          ) {
+            pages {
+              batchMove (
+                sourceObjectArray: $sourceObjectArray
+                targetPath: $targetPath
+              ) {
+                responseResult {
+                  succeeded
+                  errorCode
+                  slug
+                  message
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          sourceObjectArray: sourceObjectArray,
+          targetPath: this.batchMove_currentPath
+        }
+      })
+
+      console.log('tree：%o', this.tree)
+      console.log('batch-move-resp：%o', resp)
+      const result = _.get(resp, 'data.pages.batchMove')
+
+      if (result.responseResult.succeeded === true) {
+        let sourceTreeOpenItem = await this.findTreeItemById(this.tree, this.batchMove_currentNode[0])
+        let targetTreeOpenItem = await this.findTreeItemById(this.batchMove_tree, this.batchMove_currentNode[0])
+        console.log('sourceTreeOpenItem：%o === targetTreeOpenItem：%o', sourceTreeOpenItem, targetTreeOpenItem)
+        await this.fetchFolders(targetTreeOpenItem)
+        await this.fetchFoldersAndPages(sourceTreeOpenItem)
+
+        for (let i = 0; i < this.checkBoxSelectedArray.length; i++) {
+          let obj = await this.checkBoxSelectedArray[i]
+          let sonItem = await this.findTreeItemById(this.tree, obj.treeId)
+          console.debug('this.tree：%o === obj.treeId：%o ==== sonItem：%o', this.tree, obj.treeId, sonItem)
+
+          let sourcefatherItem = await this.findTreeItemById(this.tree, obj.parent)
+          await this.fetchFoldersAndPages(sourcefatherItem)
+
+          let targetfatherItem = await this.findTreeItemById(this.batchMove_tree, obj.parent)
+          await this.fetchFolders(targetfatherItem)
+
+          console.log('batchMove_tree：%o === batchMove_currentNode：%o', this.batchMove_tree, this.batchMove_currentNode)
+
+          this.openNodes.push(this.batchMove_currentNode[0])
+          this.batchMove_openNodes.push(this.batchMove_currentNode[0])
+          console.log('tree：%o === ', this.tree)
+        }
+
+        this.checkBoxSelectedArray = []
+      }
+
+      alert(result.responseResult.message)
+    },
+    findTreeItemById(tree, id) {
+      for (let i = 0; i < tree.length; i++) {
+        const node = tree[i]
+        if (node.id === id) {
+          return node
+        }
+        if (node.children) {
+          const foundNode = this.findTreeItemById(node.children, id)
+          if (foundNode) {
+            return foundNode
+          }
+        }
+      }
+      return null
+    },
+    removeItemById(tree, id) {
+      for (let i = 0; i < tree.length; i++) {
+        const item = tree[i]
+        if (item.id === id) {
+          tree.splice(i, 1)
+          return true
+        }
+        if (item.children && this.removeItemById(item.children, id)) {
+          return true
+        }
+      }
+      return false
+    },
+    addToTree(tree, nodeId, newNode) {
+      for (let node of tree) {
+        if (node.id === nodeId) {
+          if (!node.children) {
+            node.children = []
+          }
+          newNode.path = node.path + '/' + _.last(newNode.path.split('/'))
+          newNode.parent = node.id
+          node.children.push(newNode)
+          return true
+        }
+        if (node.children && node.children.length > 0) {
+          const added = this.addToTree(node.children, nodeId, newNode)
+          if (added) {
+            return true
+          }
+        }
+      }
+      return false
+    },
+    onCheckboxChange(event, item) {
+      const isChecked = event
+      if (isChecked) {
+        let ancestors = item.ancestors
+        const isFatherInSeleted = this.checkBoxSelectedArray.some(item => ancestors.includes(item.treeId))
+        if (!isFatherInSeleted) {
+          this.checkBoxSelectedArray.push({
+            treeId: item.id,
+            pageId: item.pageId,
+            path: item.path,
+            isFolder: item.isFolder,
+            ancestors: item.ancestors,
+            parent: item.parent
+          })
+        }
+      } else {
+        let index = this.checkBoxSelectedArray.findIndex(obj => obj.treeId === item.id)
+        if (index !== -1) {
+          this.checkBoxSelectedArray.splice(index, 1)
+        }
+      }
+      console.log('checkBoxSelectedArray：%o ---- event：%o ---- item：%o', this.checkBoxSelectedArray, event, item)
     },
     close() {
       this.isShown = false
@@ -296,10 +619,10 @@ export default {
       }
     },
     async fetchFolders (item) {
+      console.log('构建目录树，item：{}', item)
       if (item.isLoaded) {
         return
       }
-      console.log('构建目录树')
 
       this.searchLoading = true
       const resp = await this.$apollo.query({
@@ -325,8 +648,8 @@ export default {
         }
       })
       const items = _.get(resp, 'data.pages.tree', [])
-      const itemFolders = _.filter(items, ['isFolder', true]).map(f => ({...f, children: []}))
-      const itemPages = _.filter(items, i => i.pageId > 0)
+      const itemFolders = _.filter(items, ['isFolder', true]).map(f => ({...f, children: [], checked: false}))
+      const itemPages = _.filter(items, i => i.pageId > 0).map(f => ({...f, checked: false}))
 
       console.log('itemFolders：%o', itemFolders)
       if (itemFolders.length > 0) {
@@ -339,7 +662,124 @@ export default {
 
       this.searchLoading = false
     },
-    async createFolder(item) {
+    async fetchFoldersAndPages (item) {
+      console.log('构建目录树，item：{}', item)
+      if (item.isLoaded) {
+        return
+      }
+
+      this.searchLoading = true
+      const resp = await this.$apollo.query({
+        query: gql`
+          query ($parent: Int!, $mode: PageTreeMode!, $locale: String!) {
+            pages {
+              tree(parent: $parent, mode: $mode, locale: $locale) {
+                id
+                path
+                title
+                isFolder
+                pageId
+                parent
+                ancestors
+              }
+            }
+          }
+        `,
+        fetchPolicy: 'network-only',
+        variables: {
+          parent: item.id,
+          mode: 'ALL',
+          locale: this.currentLocale
+        }
+      })
+      const items = _.get(resp, 'data.pages.tree', [])
+      const itemFolders = _.filter(items, ['isFolder', true]).map(f => ({...f, children: [], checked: false}))
+      const itemPages = _.filter(items, i => i.pageId > 0).map(f => ({...f, checked: false}))
+
+      console.log('itemFolders：%o', itemFolders)
+      if (itemFolders.length > 0 || itemPages.length > 0) {
+        item.children = [...itemFolders, ...itemPages]
+      } else {
+        item.children = undefined
+      }
+      this.pages = _.unionBy(this.pages, itemPages, 'id')
+      this.all = _.unionBy(this.all, items, 'id')
+
+      this.searchLoading = false
+    },
+    async editFolder(item) {
+      item.editing = true
+      // 等待tree-view下拉目录渲染完毕
+      await new Promise(resolve => {
+        setTimeout(resolve, 100)
+      })
+      this.$nextTick(() => {
+        let input = document.getElementById(`input-${item.id}`)
+        console.log('item：%o ===== input：%o', item, input)
+
+        input.focus()
+        input.select()
+
+        input.addEventListener('blur', async () => {
+          if (item.editing === true) {
+            item.editing = false
+            let oldPath = item.path
+            item.path = _.initial(item.path.split('/')).join('/') + ('/' + input.value)
+            console.log('item.path：' + item.path)
+            await this.updateFolderName(oldPath, item.path, item.isFolder)
+            await this.fetchFolders(item)
+          }
+        })
+
+        input.addEventListener('keydown', async (event) => {
+          if (event.key === 'Enter' || event.key === 'Esc') {
+            if (item.editing === true) {
+              item.editing = false
+              let oldPath = item.path
+              item.path = _.initial(item.path.split('/')).join('/') + ('/' + input.value)
+              console.log('item.path：' + item.path)
+              await this.updateFolderName(oldPath, item.path, item.isFolder)
+              await this.fetchFolders(item)
+            }
+          }
+        })
+      })
+    },
+    async updateFolderName(oldPath, newPath, isFolder) {
+      let resp = await this.$apollo.mutate({
+        mutation: gql`
+          mutation (
+            $oldPath: String!,
+            $newPath: String!,
+            $isFolder: Boolean!
+          ) {
+            pages {
+              updateFolderPath(
+                oldPath: $oldPath,
+                newPath: $newPath
+                isFolder: $isFolder
+              ) {
+                responseResult {
+                  succeeded
+                  errorCode
+                  slug
+                  message
+                }
+              }
+            }
+          }
+      `,
+        variables: {
+          oldPath: oldPath,
+          newPath: newPath,
+          isFolder: isFolder
+        }
+      })
+      console.log('add page resp：', resp)
+      resp = _.get(resp, 'data.pages.create', {})
+    },
+    async createFolder(item, batchMoveFlag = false) {
+      console.log('createFoler')
       this.newName = ''
 
       const folderId = Math.floor(Math.random() * 1000000000)
@@ -357,12 +797,17 @@ export default {
         item.children = []
       }
       await item.children.push(newFolder)
-      // 保持当前文件夹下拉状态
-      if (this.openNodes.indexOf(0) === -1) {
-        await this.openNodes.push(0)
+
+      let openNodes = this.openNodes
+      if (batchMoveFlag) {
+        openNodes = this.batchMove_openNodes
       }
-      if (this.openNodes.indexOf(item.id) === -1) {
-        await this.openNodes.push(item.id)
+      // 保持当前文件夹下拉状态
+      if (openNodes.indexOf(0) === -1) {
+        await openNodes.push(0)
+      }
+      if (openNodes.indexOf(item.id) === -1) {
+        await openNodes.push(item.id)
       }
 
       // 等待tree-view下拉目录渲染完毕

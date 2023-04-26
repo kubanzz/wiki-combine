@@ -244,6 +244,10 @@ module.exports = {
   PageIsNotExist: CustomError('PageIsNotExist', {
     message: '当前页面不存在.',
     code: 9001
+  }),
+  TargetPageExist: CustomError('TargetPageExist', {
+    message: '目标文件夹存在重复文件.',
+    code: 9002
   })
 
 }
