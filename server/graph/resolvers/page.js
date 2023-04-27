@@ -580,6 +580,23 @@ module.exports = {
       }
     },
     /**
+     * BATCH DELETE PAGE
+     */
+    async batchDelete(obj, args, context) {
+      try {
+        await WIKI.models.pages.batchDeletePages({
+          ...args,
+          user: context.req.user
+        })
+        return {
+          responseResult: graphHelper.generateSuccess('文件删除成功！')
+        }
+      } catch (err) {
+        console.log(err)
+        return graphHelper.generateError(err)
+      }
+    },
+    /**
      * UPDATE FOLDER Path
      */
     async updateFolderPath(obj, args, context) {
@@ -589,7 +606,7 @@ module.exports = {
           user: context.req.user
         })
         return {
-          responseResult: graphHelper.generateSuccess('文件移动成功！')
+          responseResult: graphHelper.generateSuccess('文件重命名成功！')
         }
       } catch (err) {
         console.log(err)

@@ -865,8 +865,15 @@ module.exports = class Page extends Model {
     if (isFolder) {
       // 去除地址前后的'/'
       oldPath = oldPath.trim().replace(/^\/|\/$/g, '')
+      newPath = newPath.trim().replace(/^\/|\/$/g, '')
+
       // // 去除叶子文件夹
       // let subPath = _.initial(oldPath.split('/')).join('/')
+
+      // newPath非根目录则补'/'
+      if (newPath !== '') {
+        newPath += '/'
+      }
 
       // 避免更新到文件名前缀与路径相同的
       oldPath += '/'
@@ -996,10 +1003,6 @@ module.exports = class Page extends Model {
       let sourcePath = sourceObj.path
       const isFolder = sourceObj.isFolder
 
-      if (await this.hasConflicFile(sourcePath, opts.targetPath)) {
-        throw new WIKI.Error.TargetPageExist()
-      }
-
       let updatedPages = []
       if (isFolder) {
         // 去除地址前后的'/'
@@ -1107,6 +1110,40 @@ module.exports = class Page extends Model {
     //   path: opts.destinationPath,
     //   mode: 'create'
     // })
+  }
+
+  static async batchDeletePages(opts) {
+    let deleteObjectArray = opts.deleteObjectArray
+
+    for (let i = 0; i < deleteObjectArray.length; i++) {
+      const isFolder = deleteObjectArray[i].isFolder
+      // 去除地址前后的'/'
+      let deletePath = deleteObjectArray[i].path.trim().replace(/^\/|\/$/g, '')
+
+      if (isFolder) {
+        // 避免更新到文件名前缀与路径相同的
+        let deleteLikePath = deletePath + '/'
+        // 更新移动的文件夹下所有文件的路径（finalPath = targetPath + 数据库中移动的文件夹及其后面的path）
+        await WIKI.models.knex.table('pages')
+          .where('path', 'like', `${deletePath}%`)
+          .delete()
+
+        // 删除移动的文件夹的目录树
+        await WIKI.models.knex.table('pageTree')
+          .where('path', 'like', `${deleteLikePath}%`) // 删除文件目录树
+          .orWhere('path', deletePath) // 删除文件夹目录树
+          .delete()
+      } else {
+        await WIKI.models.knex.table('pages')
+          .where('path', deletePath)
+          .delete()
+
+        // 删除移动的文件夹的目录树
+        await WIKI.models.knex.table('pageTree')
+          .where('path', deletePath) // 删除文件目录树
+          .delete()
+      }
+    }
   }
 
   static async hasConflicFile (sourcePath, targetPath) {

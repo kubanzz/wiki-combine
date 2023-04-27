@@ -127,12 +127,12 @@
                   v-list-item-avatar(size='24', tile): v-icon(color='indigo') mdi-history
                   v-list-item-content
                     v-list-item-title.body-2 {{$t('common:header.history')}}
-                v-list-item.pl-4(@click='pageSource', v-if='mode !== `source` && hasReadSourcePermission')
-                  v-list-item-avatar(size='24', tile): v-icon(color='indigo') mdi-code-tags
-                  v-list-item-title.body-2 {{$t('common:header.viewSource')}}
-                v-list-item.pl-4(@click='pageConvert', v-if='hasWritePagesPermission')
-                  v-list-item-avatar(size='24', tile): v-icon(color='indigo') mdi-lightning-bolt
-                  v-list-item-title.body-2 {{$t('common:header.convert')}}
+                //- v-list-item.pl-4(@click='pageSource', v-if='mode !== `source` && hasReadSourcePermission')
+                //-   v-list-item-avatar(size='24', tile): v-icon(color='indigo') mdi-code-tags
+                //-   v-list-item-title.body-2 {{$t('common:header.viewSource')}}
+                //- v-list-item.pl-4(@click='pageConvert', v-if='hasWritePagesPermission')
+                //-   v-list-item-avatar(size='24', tile): v-icon(color='indigo') mdi-lightning-bolt
+                //-   v-list-item-title.body-2 {{$t('common:header.convert')}}
                 v-list-item.pl-4(@click='pageDuplicate', v-if='hasWritePagesPermission')
                   v-list-item-avatar(size='24', tile): v-icon(color='indigo') mdi-content-duplicate
                   v-list-item-title.body-2 {{$t('common:header.duplicate')}}
@@ -140,6 +140,10 @@
                   v-list-item-avatar(size='24', tile): v-icon(color='indigo') mdi-content-save-move-outline
                   v-list-item-content
                     v-list-item-title.body-2 页面移动
+                v-list-item.pl-4(@click='batchPageMove', v-if='hasManagePagesPermission')
+                  v-list-item-avatar(size='24', tile): v-icon(color='indigo') mdi-content-save-move-outline
+                  v-list-item-content
+                    v-list-item-title.body-2 批量操作
                 v-list-item.pl-4(@click='pageDelete', v-if='hasDeletePagesPermission')
                   v-list-item-avatar(size='24', tile): v-icon(color='red darken-2') mdi-trash-can-outline
                   v-list-item-title.body-2 {{$t('common:header.delete')}}

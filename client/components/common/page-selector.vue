@@ -47,8 +47,8 @@
                   <v-hover v-slot:default="{ hover }">
                     <div>
                       <span v-if="!item.editing">{{item.title}}</span>
-                      <v-icon v-if="hover && !item.editing && hasAdminPermission" class="mdi mdi-plus" @click="createFolder(item)" style="margin-left: 70%"></v-icon>
-                      //- v-card-actions.grey.pa-2(:class='$vuetify.theme.dark ? `darken-2` : `lighten-1`',  v-if="item.editing")
+                      <v-icon v-if="hover && !item.editing && hasAdminPermission" :class="{ 'icon-operate': hover }" class="mdi mdi-plus" @click="createFolder(item, true)" style="margin-right: 0.5em;"></v-icon>
+                      <v-icon v-if="item.id != 0 && hover && !item.editing && hasAdminPermission" :class="{ 'icon-operate': hover }" class="mdi mdi-pencil" @click="editFolder(item)"></v-icon>
                       <v-text-field v-if="item.editing" v-model="item.title" :ref="`input-${item.id}`" :id="`input-${item.id}`" hide-details solo hide-details dense flat clearable>
                       </v-text-field>
                     </div>
@@ -129,8 +129,21 @@
           v-toolbar(color='grey darken-3', dark, dense, flat)
             .body-2 {{$t('源文件夹')}}
             v-spacer
-            v-btn(v-if="path === `home` && mode === 'batch-move'" icon, tile, target='_blank')
+            v-btn(v-if="mode === 'batch-move'", @click="deleteDialog = true" icon, tile, target='_blank')
               v-icon mdi-delete
+            <v-dialog v-model="deleteDialog" width="20%" persistent @click:outside="deleteDialog = false">
+              <v-card>
+                <v-card-title>
+                  <span class="headline">确定删除?</span>
+                </v-card-title>
+
+                <v-card-actions>
+                  <v-btn color="darken-1" text @click='batchDelete'>确定</v-btn>
+                  <v-spacer></v-spacer>
+                  <v-btn color="blue darken-1" text @click="deleteDialog = false">取消</v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
           div(style='height:400px;')
             vue-scroll(:ops='scrollStyle')
 
@@ -221,8 +234,8 @@
                   <v-hover v-if="item.isFolder === true || item.id === 0" v-slot:default="{ hover }">
                     <div>
                       <span v-if="!item.editing">{{item.title}}</span>
-                      <v-icon v-if="hover && !item.editing && hasAdminPermission" class="mdi mdi-plus" @click="createFolder(item, true)" style="margin-left: 70%"></v-icon>
-                      <v-icon v-if="hover && !item.editing && hasAdminPermission" class="mdi mdi-pencil" @click="editFolder(item)" style="margin-left: 2%"></v-icon>
+                      <v-icon v-if="hover && !item.editing && hasAdminPermission" :class="{ 'icon-operate': hover }" class="mdi mdi-plus" @click="createFolder(item, true)" style="margin-right: 0.5em;"></v-icon>
+                      <v-icon v-if="item.id != 0 && hover && !item.editing && hasAdminPermission" :class="{ 'icon-operate': hover }" class="mdi mdi-pencil" @click="editFolder(item)"></v-icon>
                       <v-text-field v-if="item.editing" v-model="item.title" :ref="`input-${item.id}`" :id="`input-${item.id}`" hide-details solo dense flat clearable>
                       </v-text-field>
                     </div>
@@ -278,6 +291,7 @@ export default {
   },
   data() {
     return {
+      deleteDialog: false,
       treeViewCacheId: 0,
       searchLoading: false,
       currentLocale: siteConfig.lang,
@@ -446,6 +460,47 @@ export default {
     }
   },
   methods: {
+    async batchDelete() {
+      const deleteObjectArray = this.checkBoxSelectedArray.map(obj => {
+        return { path: obj.path, isFolder: obj.isFolder }
+      })
+      const resp = await this.$apollo.mutate({
+        mutation: gql`
+          mutation (
+            $deleteObjectArray: [SourceObject]!
+          ) {
+            pages {
+              batchDelete (
+                deleteObjectArray: $deleteObjectArray
+              ) {
+                responseResult {
+                  succeeded
+                  errorCode
+                  slug
+                  message
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          deleteObjectArray: deleteObjectArray
+        }
+      })
+
+      const result = _.get(resp, 'data.pages.batchDelete').responseResult
+      if (result.succeeded) {
+        for (let i = 0; i < this.checkBoxSelectedArray.length; i++) {
+          let obj = this.checkBoxSelectedArray[i]
+          this.removeItemById(this.tree, obj.treeId)
+          this.removeItemById(this.batchMove_tree, obj.treeId)
+        }
+        this.checkBoxSelectedArray = []
+        this.deleteDialog = false
+      }
+
+      alert(result.message)
+    },
     onNodeActivated(item) {
       const target = this.all.find(obj => obj.id === item[0])
       if (target) {
@@ -457,7 +512,7 @@ export default {
           console.log('目标文件夹不存在，请重新选择')
         }
       }
-      console.log('all：%o --- target：%o', this.all, item)
+      console.debug('all：%o --- target：%o', this.all, item)
     },
     async batchMove() {
       if (this.checkBoxSelectedArray.length === 0) {
@@ -505,34 +560,67 @@ export default {
       const result = _.get(resp, 'data.pages.batchMove')
 
       if (result.responseResult.succeeded === true) {
-        let sourceTreeOpenItem = await this.findTreeItemById(this.tree, this.batchMove_currentNode[0])
-        let targetTreeOpenItem = await this.findTreeItemById(this.batchMove_tree, this.batchMove_currentNode[0])
-        console.log('sourceTreeOpenItem：%o === targetTreeOpenItem：%o', sourceTreeOpenItem, targetTreeOpenItem)
-        await this.fetchFolders(targetTreeOpenItem)
-        await this.fetchFoldersAndPages(sourceTreeOpenItem)
+        let refreshSourceItemList = []
+        let refreshTargetItemList = []
+
+        //- let sourceTreeOpenItem = await this.findTreeItemById(this.tree, this.batchMove_currentNode[0])
+        //- let targetTreeOpenItem = await this.findTreeItemById(this.batchMove_tree, this.batchMove_currentNode[0])
+        refreshSourceItemList.push(this.batchMove_currentNode[0])
+        refreshTargetItemList.push(this.batchMove_currentNode[0])
 
         for (let i = 0; i < this.checkBoxSelectedArray.length; i++) {
-          let obj = await this.checkBoxSelectedArray[i]
+          let obj = this.checkBoxSelectedArray[i]
           let sonItem = await this.findTreeItemById(this.tree, obj.treeId)
-          console.debug('this.tree：%o === obj.treeId：%o ==== sonItem：%o', this.tree, obj.treeId, sonItem)
+          console.log('obj：%o === this.tree：%o === obj.treeId：%o ==== sonItem：%o', obj, this.tree, obj.treeId, sonItem)
 
           let sourcefatherItem = await this.findTreeItemById(this.tree, obj.parent)
-          await this.fetchFoldersAndPages(sourcefatherItem)
+          refreshSourceItemList.push(sourcefatherItem.id)
 
           let targetfatherItem = await this.findTreeItemById(this.batchMove_tree, obj.parent)
-          await this.fetchFolders(targetfatherItem)
+          refreshTargetItemList.push(targetfatherItem.id)
 
+          console.log('sourcefatherItem：%o === targetfatherItem：%o', sourcefatherItem, targetfatherItem)
           console.log('batchMove_tree：%o === batchMove_currentNode：%o', this.batchMove_tree, this.batchMove_currentNode)
 
-          this.openNodes.push(this.batchMove_currentNode[0])
-          this.batchMove_openNodes.push(this.batchMove_currentNode[0])
-          console.log('tree：%o === ', this.tree)
+          console.debug('tree：%o === ', this.tree)
         }
 
+        await refreshSourceItemList.sort()
+        await refreshTargetItemList.sort()
+
+        console.debug('refreshSourceItemList: %O === refreshTargetItemList: %O', refreshSourceItemList, refreshTargetItemList)
+
+        for (let i = 0; i < refreshSourceItemList.length; i++) {
+          let item = await this.findTreeItemById(this.tree, refreshSourceItemList[i])
+          console.debug('%o--sourceTree: %o === targetTree-%o: %o', item, this.tree, this.batchMove_tree)
+          await this.fetchFoldersAndPages(item)
+        }
+
+        for (let i = 0; i < refreshTargetItemList.length; i++) {
+          let item = await this.findTreeItemById(this.batchMove_tree, refreshTargetItemList[i])
+          await this.fetchFolders(item)
+        }
+
+        if (this.openNodes.indexOf(this.batchMove_currentNode[0]) === -1) this.openNodes.push(this.batchMove_currentNode[0])
+        if (this.batchMove_openNodes.indexOf(this.batchMove_currentNode[0]) === -1) this.batchMove_openNodes.push(this.batchMove_currentNode[0])
         this.checkBoxSelectedArray = []
       }
 
+      console.log('文件迁移后：tree：%o === this.batchMove_tree：%o', this.tree, this.batchMove_tree)
       alert(result.responseResult.message)
+    },
+    async reloadOpenNodes() {
+      _.sortBy(this.openNodes)
+      _.sortBy(this.batchMove_openNodes)
+      console.log('reloadOpenNodes：this.openNodes：%o === this.batchMove_openNodes：%o', this.openNodes, this.batchMove_openNodes)
+      for (let i = 0; i < this.openNodes.length; i++) {
+        let sourceTreeOpenItem = await this.findTreeItemById(this.tree, this.openNodes[i])
+        await this.fetchFoldersAndPages(sourceTreeOpenItem)
+      }
+      for (let i = 0; i < this.batchMove_currentNode.length; i++) {
+        let targetTreeOpenItem = await this.findTreeItemById(this.batchMove_tree, this.batchMove_openNodes[i])
+        await this.fetchFolders(targetTreeOpenItem)
+      }
     },
     findTreeItemById(tree, id) {
       for (let i = 0; i < tree.length; i++) {
@@ -619,7 +707,7 @@ export default {
       }
     },
     async fetchFolders (item) {
-      console.log('构建目录树，item：{}', item)
+      console.log('构建【fetchFolders】目录树，item：{}', item)
       if (item.isLoaded) {
         return
       }
@@ -663,7 +751,7 @@ export default {
       this.searchLoading = false
     },
     async fetchFoldersAndPages (item) {
-      console.log('构建目录树，item：{}', item)
+      console.log('构建【fetchFoldersAndPages】目录树，item：{}', item)
       if (item.isLoaded) {
         return
       }
@@ -696,7 +784,7 @@ export default {
       const itemFolders = _.filter(items, ['isFolder', true]).map(f => ({...f, children: [], checked: false}))
       const itemPages = _.filter(items, i => i.pageId > 0).map(f => ({...f, checked: false}))
 
-      console.log('itemFolders：%o', itemFolders)
+      console.log('itemFolders：%o ===== itemPages：%o', itemFolders, itemPages)
       if (itemFolders.length > 0 || itemPages.length > 0) {
         item.children = [...itemFolders, ...itemPages]
       } else {
@@ -724,23 +812,69 @@ export default {
           if (item.editing === true) {
             item.editing = false
             let oldPath = item.path
-            item.path = _.initial(item.path.split('/')).join('/') + ('/' + input.value)
-            console.log('item.path：' + item.path)
-            await this.updateFolderName(oldPath, item.path, item.isFolder)
-            await this.fetchFolders(item)
+            let newPath = _.initial(item.path.split('/')).join('/') + ('/' + input.value)
+
+            let sourceFileItem = this.findTreeItemById(this.tree, item.parent)
+            let sourceFileList = sourceFileItem ? sourceFileItem.children : []
+
+            let targetFileItem = this.findTreeItemById(this.batchMove_tree, item.parent)
+            let targetFileList = targetFileItem ? targetFileItem.children : []
+
+            let fileList = [...sourceFileList, ...targetFileList]
+            let index = fileList.findIndex(file => file.path === newPath)
+            if (index !== -1) {
+              alert('重复文件名: ' + item.title)
+              item.title = _.last(item.path.split('/'))
+              return
+            }
+            console.log('newPath：' + newPath)
+
+            if (oldPath === newPath) return
+            await this.updateFolderName(oldPath, newPath, item.isFolder)
+
+            let sourceUpdateItem = this.findTreeItemById(this.tree, item.parent)
+            let targetUpdateItem = this.findTreeItemById(this.batchMove_tree, item.parent)
+            this.fetchFoldersAndPages(sourceUpdateItem)
+            this.fetchFolders(targetUpdateItem)
+
+            // 找到新树下的节点
+            let targetItem = this.findTreeItemById(this.tree, item.id)
+            await this.fetchFolders(targetItem)
           }
         })
 
         input.addEventListener('keydown', async (event) => {
           if (event.key === 'Enter' || event.key === 'Esc') {
-            if (item.editing === true) {
-              item.editing = false
-              let oldPath = item.path
-              item.path = _.initial(item.path.split('/')).join('/') + ('/' + input.value)
-              console.log('item.path：' + item.path)
-              await this.updateFolderName(oldPath, item.path, item.isFolder)
-              await this.fetchFolders(item)
+            item.editing = false
+            let oldPath = item.path
+            let newPath = _.initial(item.path.split('/')).join('/') + ('/' + input.value)
+
+            let sourceFileItem = this.findTreeItemById(this.tree, item.parent)
+            let sourceFileList = sourceFileItem ? sourceFileItem.children : []
+
+            let targetFileItem = this.findTreeItemById(this.batchMove_tree, item.parent)
+            let targetFileList = targetFileItem ? targetFileItem.children : []
+
+            let fileList = [...sourceFileList, ...targetFileList]
+            let index = fileList.findIndex(file => file.path === newPath)
+            if (index !== -1) {
+              alert('重复文件名: ' + item.title)
+              item.title = _.last(item.path.split('/'))
+              return
             }
+            console.log('newPath：' + newPath)
+
+            if (oldPath === newPath) return
+            await this.updateFolderName(oldPath, newPath, item.isFolder)
+
+            let sourceUpdateItem = this.findTreeItemById(this.tree, item.parent)
+            let targetUpdateItem = this.findTreeItemById(this.batchMove_tree, item.parent)
+            this.fetchFoldersAndPages(sourceUpdateItem)
+            this.fetchFolders(targetUpdateItem)
+
+            // 找到新树下的节点
+            let targetItem = this.findTreeItemById(this.tree, item.id)
+            await this.fetchFolders(targetItem)
           }
         })
       })
@@ -776,7 +910,8 @@ export default {
         }
       })
       console.log('add page resp：', resp)
-      resp = _.get(resp, 'data.pages.create', {})
+      resp = _.get(resp, 'data.pages.updateFolderPath', {})
+      alert(resp.responseResult.message)
     },
     async createFolder(item, batchMoveFlag = false) {
       console.log('createFoler')
@@ -830,6 +965,9 @@ export default {
             let uploadFolderId = await this.uploadFolder(input, item, folderId)
             newFolder.id = uploadFolderId
             await this.fetchFolders(item)
+
+            let sourceTreeItem = this.findTreeItemById(this.tree, item.id)
+            if (sourceTreeItem) await this.fetchFoldersAndPages(sourceTreeItem)
           }
         })
 
@@ -844,6 +982,9 @@ export default {
               let uploadFolderId = await this.uploadFolder(input, item, folderId)
               newFolder.id = uploadFolderId
               await this.fetchFolders(item)
+
+              let sourceTreeItem = this.findTreeItemById(this.tree, item.id)
+              if (sourceTreeItem) await this.fetchFoldersAndPages(sourceTreeItem)
             }
           }
         })
@@ -906,4 +1047,12 @@ export default {
   }
 }
 
+.icon-operate {
+  float:right;
+  margin-left: 8px;
+}
+
+.icon-operate:hover {
+  transform: scale(1.2);
+}
 </style>

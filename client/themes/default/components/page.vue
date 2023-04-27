@@ -225,30 +225,30 @@
                         )
                         v-icon(size='20') mdi-history
                     span {{$t('common:header.history')}}
-                  v-tooltip(:right='$vuetify.rtl', :left='!$vuetify.rtl', v-if='hasReadSourcePermission')
-                    template(v-slot:activator='{ on }')
-                      v-btn(
-                        fab
-                        small
-                        color='white'
-                        light
-                        v-on='on'
-                        @click='pageSource'
-                        )
-                        v-icon(size='20') mdi-code-tags
-                    span {{$t('common:header.viewSource')}}
-                  v-tooltip(:right='$vuetify.rtl', :left='!$vuetify.rtl', v-if='hasWritePagesPermission')
-                    template(v-slot:activator='{ on }')
-                      v-btn(
-                        fab
-                        small
-                        color='white'
-                        light
-                        v-on='on'
-                        @click='pageConvert'
-                        )
-                        v-icon(size='20') mdi-lightning-bolt
-                    span {{$t('common:header.convert')}}
+                  //- v-tooltip(:right='$vuetify.rtl', :left='!$vuetify.rtl', v-if='hasReadSourcePermission')
+                  //-   template(v-slot:activator='{ on }')
+                  //-     v-btn(
+                  //-       fab
+                  //-       small
+                  //-       color='white'
+                  //-       light
+                  //-       v-on='on'
+                  //-       @click='pageSource'
+                  //-       )
+                  //-       v-icon(size='20') mdi-code-tags
+                  //-   span {{$t('common:header.viewSource')}}
+                  //- v-tooltip(:right='$vuetify.rtl', :left='!$vuetify.rtl', v-if='hasWritePagesPermission')
+                  //-   template(v-slot:activator='{ on }')
+                  //-     v-btn(
+                  //-       fab
+                  //-       small
+                  //-       color='white'
+                  //-       light
+                  //-       v-on='on'
+                  //-       @click='pageConvert'
+                  //-       )
+                  //-       v-icon(size='20') mdi-lightning-bolt
+                  //-   span {{$t('common:header.convert')}}
                   v-tooltip(:right='$vuetify.rtl', :left='!$vuetify.rtl', v-if='hasWritePagesPermission')
                     template(v-slot:activator='{ on }')
                       v-btn(

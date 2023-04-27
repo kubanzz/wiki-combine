@@ -126,6 +126,10 @@ type PageMutation {
     targetPath: String!
   ): DefaultResponse @auth(requires: ["manage:pages", "manage:system"])
 
+  batchDelete(
+    deleteObjectArray: [SourceObject]!
+  ): DefaultResponse @auth(requires: ["manage:pages", "manage:system"])
+
   updateFolderPath(
     oldPath: String!
     newPath: String!
