@@ -1035,9 +1035,18 @@ module.exports = class Page extends Model {
           .delete()
       } else {
         let targetPath = opts.targetPath
+        // 去除地址前后的'/'
+        targetPath = opts.targetPath.trim().replace(/^\/|\/$/g, '')
+
         // 更新移动的文件路径（移动文件）
         let fileName = _.last(sourcePath.split('/'))
-        targetPath += ('/' + fileName)
+
+        // targetPath非根目录则补'/'
+        if (targetPath !== '') {
+          targetPath += '/'
+        }
+
+        targetPath += fileName
         updatedPages = await WIKI.models.knex.table('pages')
           .where('path', sourcePath)
           .update({
