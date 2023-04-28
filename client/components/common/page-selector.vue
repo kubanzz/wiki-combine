@@ -162,7 +162,7 @@
                 )
                 template(slot='prepend', slot-scope='{ item, open, leaf }')
                   <div style="display: flex; align-items: center; justify-content: center;">
-                    v-checkbox(v-if='mode === `batch-move` && path === `home` && item.id  !== 0'
+                    v-checkbox(v-if='mode === `batch-move` && item.id  !== 0'
                       hide-details class="mr-2" style="display: contents;" v-model="item.checked" @change="onCheckboxChange($event, item)" @click.stop)
                     v-icon mdi-{{leaf ? (item.isFolder ? (open ? 'folder-open' : 'folder') : 'text-box') : (open ? 'folder-open' : 'folder')}}
                   </div>
@@ -563,8 +563,6 @@ export default {
         let refreshSourceItemList = []
         let refreshTargetItemList = []
 
-        //- let sourceTreeOpenItem = await this.findTreeItemById(this.tree, this.batchMove_currentNode[0])
-        //- let targetTreeOpenItem = await this.findTreeItemById(this.batchMove_tree, this.batchMove_currentNode[0])
         refreshSourceItemList.push(this.batchMove_currentNode[0])
         refreshTargetItemList.push(this.batchMove_currentNode[0])
 
@@ -811,73 +809,62 @@ export default {
         input.addEventListener('blur', async () => {
           if (item.editing === true) {
             item.editing = false
-            let oldPath = item.path
-            let newPath = _.initial(item.path.split('/')).join('/') + ('/' + input.value)
-
-            let sourceFileItem = this.findTreeItemById(this.tree, item.parent)
-            let sourceFileList = sourceFileItem ? sourceFileItem.children : []
-
-            let targetFileItem = this.findTreeItemById(this.batchMove_tree, item.parent)
-            let targetFileList = targetFileItem ? targetFileItem.children : []
-
-            let fileList = [...sourceFileList, ...targetFileList]
-            let index = fileList.findIndex(file => file.path === newPath)
-            if (index !== -1) {
-              alert('重复文件名: ' + item.title)
-              item.title = _.last(item.path.split('/'))
-              return
-            }
-            console.log('newPath：' + newPath)
-
-            if (oldPath === newPath) return
-            await this.updateFolderName(oldPath, newPath, item.isFolder)
-
-            let sourceUpdateItem = this.findTreeItemById(this.tree, item.parent)
-            let targetUpdateItem = this.findTreeItemById(this.batchMove_tree, item.parent)
-            this.fetchFoldersAndPages(sourceUpdateItem)
-            this.fetchFolders(targetUpdateItem)
-
-            // 找到新树下的节点
-            let targetItem = this.findTreeItemById(this.tree, item.id)
-            await this.fetchFolders(targetItem)
+            await this.renameFolder(item, input.value)
           }
         })
 
         input.addEventListener('keydown', async (event) => {
           if (event.key === 'Enter' || event.key === 'Esc') {
             item.editing = false
-            let oldPath = item.path
-            let newPath = _.initial(item.path.split('/')).join('/') + ('/' + input.value)
-
-            let sourceFileItem = this.findTreeItemById(this.tree, item.parent)
-            let sourceFileList = sourceFileItem ? sourceFileItem.children : []
-
-            let targetFileItem = this.findTreeItemById(this.batchMove_tree, item.parent)
-            let targetFileList = targetFileItem ? targetFileItem.children : []
-
-            let fileList = [...sourceFileList, ...targetFileList]
-            let index = fileList.findIndex(file => file.path === newPath)
-            if (index !== -1) {
-              alert('重复文件名: ' + item.title)
-              item.title = _.last(item.path.split('/'))
-              return
-            }
-            console.log('newPath：' + newPath)
-
-            if (oldPath === newPath) return
-            await this.updateFolderName(oldPath, newPath, item.isFolder)
-
-            let sourceUpdateItem = this.findTreeItemById(this.tree, item.parent)
-            let targetUpdateItem = this.findTreeItemById(this.batchMove_tree, item.parent)
-            this.fetchFoldersAndPages(sourceUpdateItem)
-            this.fetchFolders(targetUpdateItem)
-
-            // 找到新树下的节点
-            let targetItem = this.findTreeItemById(this.tree, item.id)
-            await this.fetchFolders(targetItem)
+            await this.renameFolder(item, input.value)
           }
         })
       })
+    },
+    async renameFolder(item, newName) {
+      let oldPath = item.path
+      let newPath = _.initial(item.path.split('/')).join('/') + ('/' + newName)
+
+      // 去除地址前后的'/'
+      newPath = newPath.trim().replace(/^\/|\/$/g, '')
+      oldPath = oldPath.trim().replace(/^\/|\/$/g, '')
+
+      let sourceFileItem = this.findTreeItemById(this.tree, item.parent)
+      let sourceFileList = sourceFileItem ? sourceFileItem.children : []
+
+      let targetFileItem = this.findTreeItemById(this.batchMove_tree, item.parent)
+      let targetFileList = targetFileItem ? targetFileItem.children : []
+
+      let fileList = [...sourceFileList, ...targetFileList]
+      let index = fileList.findIndex(file => file.path === newPath)
+      console.debug('filelist: %o', fileList)
+      if (index !== -1) {
+        alert('重复文件名: ' + item.title)
+        item.title = _.last(item.path.split('/'))
+        return
+      }
+      console.log('newPath：' + newPath)
+
+      if (oldPath === newPath) return
+      await this.updateFolderName(oldPath, newPath, item.isFolder)
+
+      let sourceUpdateItem = this.findTreeItemById(this.tree, item.parent)
+      let targetUpdateItem = this.findTreeItemById(this.batchMove_tree, item.parent)
+      this.fetchFoldersAndPages(sourceUpdateItem)
+      this.fetchFolders(targetUpdateItem)
+
+      await this.openNodes.sort()
+      await this.batchMove_openNodes.sort()
+      for (let i = 0; i < this.openNodes.length; i++) {
+        let item = await this.findTreeItemById(this.tree, this.openNodes[i])
+        console.debug('%o--sourceTree: %o === targetTree-%o: %o', item, this.tree, this.batchMove_tree)
+        await this.fetchFoldersAndPages(item)
+      }
+
+      for (let i = 0; i < this.batchMove_openNodes.length; i++) {
+        let item = await this.findTreeItemById(this.batchMove_tree, this.batchMove_openNodes[i])
+        await this.fetchFolders(item)
+      }
     },
     async updateFolderName(oldPath, newPath, isFolder) {
       let resp = await this.$apollo.mutate({
