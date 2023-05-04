@@ -116,7 +116,7 @@
     v-card.page-selector(v-else-if='mode === `batch-move`' :minWidth=818)
       div.dialog-header.is-blue
         v-icon.mr-3(color='white') mdi-page-next-outline
-        .body-1 {{$t('common:pageSelector.moveTitle')}}
+        .body-1 {{$t('common:pageSelector.selectTitle')}}
         v-spacer
         v-progress-circular(
           indeterminate
