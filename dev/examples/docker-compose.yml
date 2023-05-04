@@ -35,6 +35,7 @@ services:
     volumes:
       - /home/wiki/wiki-combine/client:/wiki/client
       - /home/wiki/wiki-combine/server:/wiki/server
+      - /home/wiki/wiki-combine/assets:/wiki/assets
 
 volumes:
   db-data:
