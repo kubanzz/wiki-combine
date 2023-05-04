@@ -6,7 +6,7 @@
     overlay-opacity='.7'
     )
     v-card.page-selector(v-if='mode !== `batch-move`' :minWidth=818)
-      .dialog-header.is-blue
+      <div class="dialog-header is-blue">
         v-icon.mr-3(color='white') mdi-page-next-outline
         .body-1(v-if='mode === `create`') {{$t('common:pageSelector.createTitle')}}
         .body-1(v-else-if='mode === `move`') {{$t('common:pageSelector.moveTitle')}}
@@ -19,6 +19,7 @@
           :width='2'
           v-show='searchLoading'
           )
+      </div>
       .d-flex
         v-flex.grey(xs5, :class='$vuetify.theme.dark ? `darken-4` : `lighten-3`')
           v-toolbar(color='grey darken-3', dark, dense, flat)
@@ -113,7 +114,7 @@
           span {{$t('common:actions.select')}}
 
     v-card.page-selector(v-else-if='mode === `batch-move`' :minWidth=818)
-      .dialog-header.is-blue
+      div.dialog-header.is-blue
         v-icon.mr-3(color='white') mdi-page-next-outline
         .body-1 {{$t('common:pageSelector.moveTitle')}}
         v-spacer
