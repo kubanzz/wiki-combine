@@ -154,11 +154,11 @@
                 :open.sync='openNodes'
                 :items='tree'
                 :load-children='fetchFoldersAndPages'
+                :open-on-click='openOnClick'
                 expand-icon='mdi-menu-down-outline'
                 item-id='path'
                 item-text='title'
                 dense
-                open-on-click
                 )
                 template(slot='prepend', slot-scope='{ item, open, leaf }')
                   <div style="display: flex; align-items: center; justify-content: center;">
@@ -300,6 +300,7 @@ export default {
       currentPage: null,
       currentNode: [0],
       openNodes: [0],
+      openOnClick: true,
       batchMove_currentPath: '',
       batchMove_currentNode: [0],
       batchMove_openNodes: [0],
@@ -560,48 +561,52 @@ export default {
       const result = _.get(resp, 'data.pages.batchMove')
 
       if (result.responseResult.succeeded === true) {
-        let refreshSourceItemList = []
-        let refreshTargetItemList = []
+        console.log('=============== openOnClick：%o', this.openOnClick)
 
-        refreshSourceItemList.push(this.batchMove_currentNode[0])
-        refreshTargetItemList.push(this.batchMove_currentNode[0])
+        // 需要刷新的节点即为当前打开的 + 当前选中的
+        let openNodesCopy = this.openNodes.slice()
+        let batchMoveOpenNodesCopy = this.batchMove_openNodes.slice()
 
-        for (let i = 0; i < this.checkBoxSelectedArray.length; i++) {
-          let obj = this.checkBoxSelectedArray[i]
-          let sonItem = await this.findTreeItemById(this.tree, obj.treeId)
-          console.log('obj：%o === this.tree：%o === obj.treeId：%o ==== sonItem：%o', obj, this.tree, obj.treeId, sonItem)
+        if (openNodesCopy.indexOf(this.batchMove_currentNode[0]) === -1) await openNodesCopy.push(this.batchMove_currentNode[0])
+        if (batchMoveOpenNodesCopy.indexOf(this.batchMove_currentNode[0]) === -1) await batchMoveOpenNodesCopy.push(this.batchMove_currentNode[0])
 
-          let sourcefatherItem = await this.findTreeItemById(this.tree, obj.parent)
-          refreshSourceItemList.push(sourcefatherItem.id)
+        await openNodesCopy.sort((a, b) => a - b)
+        await batchMoveOpenNodesCopy.sort((a, b) => a - b)
 
-          let targetfatherItem = await this.findTreeItemById(this.batchMove_tree, obj.parent)
-          refreshTargetItemList.push(targetfatherItem.id)
-
-          console.log('sourcefatherItem：%o === targetfatherItem：%o', sourcefatherItem, targetfatherItem)
-          console.log('batchMove_tree：%o === batchMove_currentNode：%o', this.batchMove_tree, this.batchMove_currentNode)
-
-          console.debug('tree：%o === ', this.tree)
+        console.log('排序后的数组：%o', this.openNodes)
+        for (let i = 0; i < openNodesCopy.length; i++) {
+          console.debug('开始查找前节点数据：id：%o --- tree：%o', openNodesCopy[i], this.tree)
+          let item = await this.findTreeItemById(this.tree, openNodesCopy[i])
+          if (item) {
+            await this.fetchFoldersAndPages(item)
+          } else {
+            console.log('找不到树节点 id：%o --- tree：%o', openNodesCopy[i], this.tree)
+          }
         }
 
-        await refreshSourceItemList.sort()
-        await refreshTargetItemList.sort()
-
-        console.debug('refreshSourceItemList: %O === refreshTargetItemList: %O', refreshSourceItemList, refreshTargetItemList)
-
-        for (let i = 0; i < refreshSourceItemList.length; i++) {
-          let item = await this.findTreeItemById(this.tree, refreshSourceItemList[i])
-          console.debug('%o--sourceTree: %o === targetTree-%o: %o', item, this.tree, this.batchMove_tree)
-          await this.fetchFoldersAndPages(item)
+        for (let i = 0; i < batchMoveOpenNodesCopy.length; i++) {
+          let item = await this.findTreeItemById(this.batchMove_tree, batchMoveOpenNodesCopy[i])
+          if (item) {
+            await this.fetchFolders(item)
+          }
         }
 
-        for (let i = 0; i < refreshTargetItemList.length; i++) {
-          let item = await this.findTreeItemById(this.batchMove_tree, refreshTargetItemList[i])
-          await this.fetchFolders(item)
+        let currentIndexLeft = this.openNodes.indexOf(this.batchMove_currentNode[0])
+        let currentIndexRight = this.batchMove_openNodes.indexOf(this.batchMove_currentNode[0])
+        if (currentIndexLeft !== -1) {
+          this.openNodes.splice(currentIndexLeft, 1)
+        }
+        if (currentIndexRight !== -1) {
+          this.batchMove_openNodes.splice(currentIndexRight, 1)
         }
 
-        if (this.openNodes.indexOf(this.batchMove_currentNode[0]) === -1) this.openNodes.push(this.batchMove_currentNode[0])
-        if (this.batchMove_openNodes.indexOf(this.batchMove_currentNode[0]) === -1) this.batchMove_openNodes.push(this.batchMove_currentNode[0])
+        await this.openNodes.push(this.batchMove_currentNode[0])
+        await this.batchMove_openNodes.push(this.batchMove_currentNode[0])
         this.checkBoxSelectedArray = []
+
+        await this.$refs.moveSourceTreeview.updateAll()
+        this.openNodes = openNodesCopy
+        this.batchMove_openNodes = batchMoveOpenNodesCopy
       }
 
       console.log('文件迁移后：tree：%o === this.batchMove_tree：%o', this.tree, this.batchMove_tree)
@@ -620,7 +625,7 @@ export default {
         await this.fetchFolders(targetTreeOpenItem)
       }
     },
-    findTreeItemById(tree, id) {
+    findTreeItemById (tree, id) {
       for (let i = 0; i < tree.length; i++) {
         const node = tree[i]
         if (node.id === id) {
