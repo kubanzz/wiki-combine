@@ -19,9 +19,9 @@ npm-debug.log*
 # Generated assets
 /assets/*
 !/assets/favicon.ico
-server/views/master.pug
-server/views/legacy/master.pug
-server/views/setup.pug
+#server/views/master.pug
+#server/views/legacy/master.pug
+#server/views/setup.pug
 
 # Webpack
 .webpack-cache
