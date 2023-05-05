@@ -1047,16 +1047,4 @@ export default {
 .icon-operate:hover {
   transform: scale(1.2);
 }
-
-.dialog-header {
-    background-color: #1976d2;
-    background-image: radial-gradient(ellipse at top,#2196f3,#1976d2),radial-gradient(ellipse at bottom,#1565c0,#1976d2);
-    height: 60px;
-    color: #fff;
-    -js-display: flex;
-    display: flex;
-    align-items: center;
-    padding: 0 1rem;
-    font-size: 1.2rem;
-}
 </style>
