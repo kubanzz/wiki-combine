@@ -914,78 +914,6 @@ module.exports = class Page extends Model {
    * @returns {Promise} Promise with no value
    */
   static async batchMovePage(opts) {
-    // let page
-    // if (_.has(opts, 'id')) {
-    //   page = await WIKI.models.pages.query().findById(opts.id)
-    // } else {
-    //   page = await WIKI.models.pages.query().findOne({
-    //     path: opts.path,
-    //     localeCode: opts.locale
-    //   })
-    // }
-    // if (!page) {
-    //   throw new WIKI.Error.PageNotFound()
-    // }
-
-    // // -> Validate path
-    // if (opts.destinationPath.includes('.') || opts.destinationPath.includes(' ') || opts.destinationPath.includes('\\') || opts.destinationPath.includes('//')) {
-    //   throw new WIKI.Error.PageIllegalPath()
-    // }
-
-    // // -> Remove trailing slash
-    // if (opts.destinationPath.endsWith('/')) {
-    //   opts.destinationPath = opts.destinationPath.slice(0, -1)
-    // }
-
-    // // -> Remove starting slash
-    // if (opts.destinationPath.startsWith('/')) {
-    //   opts.destinationPath = opts.destinationPath.slice(1)
-    // }
-
-    // // -> Check for source page access
-    // if (!WIKI.auth.checkAccess(opts.user, ['manage:pages'], {
-    //   locale: page.localeCode,
-    //   path: page.path
-    // })) {
-    //   throw new WIKI.Error.PageMoveForbidden()
-    // }
-    // // -> Check for destination page access
-    // if (!WIKI.auth.checkAccess(opts.user, ['write:pages'], {
-    //   locale: opts.destinationLocale,
-    //   path: opts.destinationPath
-    // })) {
-    //   throw new WIKI.Error.PageMoveForbidden()
-    // }
-
-    // // -> Check for existing page at destination path
-    // const destPage = await WIKI.models.pages.query().findOne({
-    //   path: opts.destinationPath,
-    //   localeCode: opts.destinationLocale
-    // })
-    // if (destPage) {
-    //   throw new WIKI.Error.PagePathCollision()
-    // }
-
-    // // -> Create version snapshot  ！！！！
-    // await WIKI.models.pageHistory.addVersion({
-    //   ...page,
-    //   action: 'moved',
-    //   versionDate: page.updatedAt
-    // })
-
-    // const destinationHash = pageHelper.generateHash({ path: opts.destinationPath, locale: opts.destinationLocale, privateNS: opts.isPrivate ? 'TODO' : '' })
-
-    // -> Move page
-    // const destinationTitle = (page.title === _.last(page.path.split('/')) ? _.last(opts.destinationPath.split('/')) : page.title)
-    // await WIKI.models.pages.query().patch({
-    //   path: opts.destinationPath,
-    //   localeCode: opts.destinationLocale,
-    //   title: destinationTitle,
-    //   hash: destinationHash
-    // }).findById(page.id)
-    // await WIKI.models.pages.deletePageFromCache(page.hash)
-    // WIKI.events.outbound.emit('deletePageFromCache', page.hash)
-
     let sourceObjArray = opts.sourceObjectArray
 
     // 校验移动的文件是否已经存在同名文件/文件夹
@@ -1021,6 +949,21 @@ module.exports = class Page extends Model {
 
         // 避免更新到文件名前缀与路径相同的
         sourcePath += '/'
+
+        let needUpdatedPages = await WIKI.models.knex.table('pages')
+          .where('path', 'like', `${sourcePath}%`)
+
+        for (let i = 0; i < needUpdatedPages.length; i++) {
+          let page = needUpdatedPages[i]
+
+          // 创建版本快照
+          await WIKI.models.pageHistory.addVersion({
+            ...page,
+            action: 'moved',
+            versionDate: page.updatedAt
+          })
+        }
+
         // 更新移动的文件夹下所有文件的路径（finalPath = targetPath + 数据库中移动的文件夹及其后面的path）
         updatedPages = await WIKI.models.knex.table('pages')
           .where('path', 'like', `${sourcePath}%`)
@@ -1037,6 +980,9 @@ module.exports = class Page extends Model {
         let targetPath = opts.targetPath
         // 去除地址前后的'/'
         targetPath = opts.targetPath.trim().replace(/^\/|\/$/g, '')
+
+        // 创建版本快照
+        await this.createVersionSnapshot(sourcePath)
 
         // 更新移动的文件路径（移动文件）
         let fileName = _.last(sourcePath.split('/'))
@@ -1063,19 +1009,6 @@ module.exports = class Page extends Model {
         await this.rebuildSingalTree(updatedPages[i])
       }
     }
-
-    // -> Rebuild page tree
-    // await WIKI.models.pages.rebuildTree()
-
-    // let newPageInfo = {
-    //   path: opts.destinationPath,
-    //   localeCode: opts.destinationLocale,
-    //   title: destinationTitle,
-    //   id: page.id,
-    //   isPrivate: page.isPrivate,
-    //   privateNS: page.privateNS
-    // }
-    // await WIKI.models.pages.rebuildSingalTree(newPageInfo)
 
     // -> Rename in Search Index
     // const pageContents = await WIKI.models.pages.query().findById(page.id).select('render')
@@ -1119,6 +1052,25 @@ module.exports = class Page extends Model {
     //   path: opts.destinationPath,
     //   mode: 'create'
     // })
+  }
+
+  static async createVersionSnapshot(path, locale = 'zh', action = 'moved') {
+    let page = await WIKI.models.pages.query().findOne({
+      path: path,
+      localeCode: locale
+    })
+
+    if (!page) {
+      console.error('没有找到页面[path：%o]')
+      return
+    }
+
+    // -> Create version snapshot  ！！！！
+    await WIKI.models.pageHistory.addVersion({
+      ...page,
+      action: action,
+      versionDate: page.updatedAt
+    })
   }
 
   static async batchDeletePages(opts) {
