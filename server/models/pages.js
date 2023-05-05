@@ -964,6 +964,8 @@ module.exports = class Page extends Model {
           })
         }
 
+        // const pageHash = pageHelper.generateHash({ path: obj.path, locale: obj.locale, privateNS: obj.isPrivate ? 'TODO' : '' })
+
         // 更新移动的文件夹下所有文件的路径（finalPath = targetPath + 数据库中移动的文件夹及其后面的path）
         updatedPages = await WIKI.models.knex.table('pages')
           .where('path', 'like', `${sourcePath}%`)
@@ -1008,6 +1010,23 @@ module.exports = class Page extends Model {
       for (let i = 0; i < updatedPages.length; i++) {
         await this.rebuildSingalTree(updatedPages[i])
       }
+
+      // 批量更新文章哈希值
+      WIKI.models.knex.transaction(trx => {
+        const updates = []
+        updatedPages.forEach(page => {
+          const update = WIKI.models.knex.table('pages')
+            .where('id', page.id)
+            .update({
+              hash: pageHelper.generateHash({ path: page.path, locale: page.localeCode, privateNS: page.isPrivate ? 'TODO' : '' })
+            })
+            .transacting(trx)
+          updates.push(update)
+        })
+        Promise.all(updates)
+          .then(trx.commit)
+          .catch(trx.rollback)
+      })
     }
 
     // -> Rename in Search Index
