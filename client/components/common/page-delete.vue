@@ -67,17 +67,20 @@ export default {
       this.isShown = false
     },
     async deletePage() {
-      const {isFoldOnlyOnePage} = await isFoldOnlyPage({
-        path: this.pagePath
-      })
-      if (isFoldOnlyOnePage && !this.hasAdminPermission) {
-        this.$store.commit('showNotification', {
-          style: 'red',
-          message: '非管理员不能删除文件夹最后一个文件。',
-          icon: 'alert'
-        })
-        this.isShown = false
-        throw new Error('非管理员不能删除文件夹最后一个文件。')
+      // const {isFoldOnlyOnePage} = await isFoldOnlyPage({
+      //   path: this.pagePath
+      // })
+      // if (isFoldOnlyOnePage && !this.hasAdminPermission) {
+      //   this.$store.commit('showNotification', {
+      //     style: 'red',
+      //     message: '非管理员不能删除文件夹最后一个文件。',
+      //     icon: 'alert'
+      //   })
+      //   this.isShown = false
+      //   throw new Error('非管理员不能删除文件夹最后一个文件。')
+      // }
+      if (!this.hasAdminPermission) {
+        throw new Error('没有删除权限')
       }
       this.loading = true
       this.$store.commit(`loadingStart`, 'page-delete')
