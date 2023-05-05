@@ -36,6 +36,9 @@ RUN apk add bash curl git openssh gnupg sqlite --no-cache && \
 
 WORKDIR /wiki
 
+RUN chown -R node:node /wiki && \
+    chmod -R 775 /wiki
+
 COPY --chown=node:node --from=assets /wiki/assets ./assets
 COPY --chown=node:node --from=assets /wiki/node_modules ./node_modules
 COPY --chown=node:node ./server ./server
