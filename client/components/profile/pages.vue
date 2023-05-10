@@ -31,17 +31,23 @@
                 td.admin-pages-path
                   v-chip(label, small, :color='$vuetify.theme.dark ? `grey darken-4` : `grey lighten-4`') {{ props.item.locale }}
                   span.ml-2.grey--text(:class='$vuetify.theme.dark ? `text--lighten-1` : `text--darken-2`') / {{ props.item.path }}
-                td {{ props.item.createdAt | moment('calendar') }}
-                td {{ props.item.updatedAt | moment('calendar') }}
+                td
+                  <v-switch v-model='props.item.isPublished' color="success" hide-details @click.stop="togglePublish(props)" style="margin-top: 0px;padding-top: 0px"></v-switch>
+                td {{ dateFormat(props.item.createdAt)}}
+                td {{ dateFormat(props.item.updatedAt)}}
             template(slot='no-data')
               v-alert.ma-3(icon='mdi-alert', :value='true', outlined, color='grey')
                 em.caption {{$t('profile:pages.emptyList')}}
           .text-center.py-2.animated.fadeInDown(v-if='this.pageTotal > 1')
             v-pagination(v-model='pagination', :length='pageTotal')
+
+    loader(v-model='dialogProgress', title='发布中', subtitle='请稍等')
 </template>
 
 <script>
 import gql from 'graphql-tag'
+import _ from 'lodash'
+import {dateFtt} from '../../utils/date-util'
 
 export default {
   data() {
@@ -49,7 +55,8 @@ export default {
       selectedPage: {},
       pagination: 1,
       pages: [],
-      loading: false
+      loading: false,
+      dialogProgress: false
     }
   },
   computed: {
@@ -57,6 +64,7 @@ export default {
       return [
         { text: this.$t('profile:pages.headerTitle'), value: 'title' },
         { text: this.$t('profile:pages.headerPath'), value: 'path' },
+        { text: '发布状态', value: 'isPublished' },
         { text: this.$t('profile:pages.headerCreatedAt'), value: 'createdAt', width: 250 },
         { text: this.$t('profile:pages.headerUpdatedAt'), value: 'updatedAt', width: 250 }
       ]
@@ -66,6 +74,15 @@ export default {
     }
   },
   methods: {
+    dateFormat (dateStr) {
+      return dateFtt('yyyy-MM-dd hh:mm:ss', new Date(dateStr))
+    },
+    showProgressDialog(textKey) {
+      this.dialogProgress = true
+    },
+    hideProgressDialog() {
+      this.dialogProgress = false
+    },
     async refresh() {
       await this.$apollo.queries.pages.refetch()
       this.$store.commit('showNotification', {
@@ -76,6 +93,51 @@ export default {
     },
     goToPage(id) {
       window.location.assign(`/i/` + id)
+    },
+    async togglePublish(props) {
+      // this.showProgressDialog('publishing')
+
+      let resp = await this.$apollo.mutate({
+        mutation: gql`
+          mutation (
+            $id: Int!
+            $isPublished: Boolean!
+          ) {
+            pages {
+              publish(
+                id: $id
+                isPublished: $isPublished
+              ) {
+                responseResult {
+                  succeeded
+                  errorCode
+                  slug
+                  message
+                }
+                page {
+                  updatedAt
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          id: props.item.id,
+          isPublished: props.item.isPublished
+        }
+      })
+      resp = _.get(resp, 'data.pages.publish', {})
+      if (_.get(resp, 'responseResult.succeeded')) {
+      } else {
+        console.log(' ============== resp：%o', resp)
+        let errorMessage = ''
+        if (!props.item.isPublished) {
+          errorMessage += '取消'
+        }
+        errorMessage += '发布失败：' + _.get(resp, 'responseResult.message')
+        props.item.isPublished = !props.item.isPublished
+        alert(errorMessage)
+      }
     }
   },
   apollo: {

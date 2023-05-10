@@ -6,7 +6,7 @@ const state = {
   authorName: 'Unknown',
   createdAt: '',
   description: '',
-  isPublished: true,
+  isPublished: false,
   locale: 'en',
   path: '',
   routPath: '',

@@ -109,6 +109,13 @@ type PageMutation {
     scriptJs: String
     tags: [String]
     title: String
+    isAutoUpdate: Boolean
+  ): PageResponse
+    @auth(requires: ["write:pages", "manage:pages", "manage:system"])
+
+  publish(
+    id: Int!
+    isPublished: Boolean!
   ): PageResponse
     @auth(requires: ["write:pages", "manage:pages", "manage:system"])
 
@@ -303,6 +310,7 @@ type PageTreeItem {
   title: String!
   isPrivate: Boolean!
   isFolder: Boolean!
+  isPublished: Boolean
   privateNS: String
   parent: Int
   pageId: Int

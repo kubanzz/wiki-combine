@@ -313,31 +313,42 @@ module.exports = {
           return []
         }
       }
-
-      const results = await WIKI.models.knex('pageTree').where(builder => {
-        builder.where('localeCode', args.locale)
-        switch (args.mode) {
-          case 'FOLDERS':
-            builder.andWhere('isFolder', true)
-            break
-          case 'PAGES':
-            builder.andWhereNotNull('pageId')
-            break
-        }
-        if (!args.parent || args.parent < 1) {
-          builder.whereNull('parent')
-        } else {
-          builder.where('parent', args.parent)
-          if (args.includeAncestors && curPage && curPage.ancestors.length > 0) {
-            builder.orWhereIn('id', _.isString(curPage.ancestors) ? JSON.parse(curPage.ancestors) : curPage.ancestors)
+      const results = await WIKI.models.knex('pageTree')
+        .leftJoin('pages', 'pageTree.pageId', 'pages.id')
+        .select('pageTree.*', 'pages.isPublished', 'pages.creatorId')
+        .where(builder => {
+          builder.where('pageTree.localeCode', args.locale)
+          switch (args.mode) {
+            case 'FOLDERS':
+              builder.andWhere('pageTree.isFolder', true)
+              break
+            case 'PAGES':
+              builder.andWhereNotNull('pageTree.pageId')
+              break
           }
-        }
-      }).orderBy([{ column: 'isFolder', order: 'desc' }, 'title'])
+          if (!args.parent || args.parent < 1) {
+            builder.whereNull('pageTree.parent')
+          } else {
+            builder.where('pageTree.parent', args.parent)
+            if (args.includeAncestors && curPage && curPage.ancestors.length > 0) {
+              builder.orWhereIn('pageTree.id', _.isString(curPage.ancestors) ? JSON.parse(curPage.ancestors) : curPage.ancestors)
+            }
+          }
+        }).orderBy([{ column: 'pageTree.isFolder', order: 'desc' }, 'pageTree.title'])
+
       return results.filter(r => {
-        return WIKI.auth.checkAccess(context.req.user, ['read:pages'], {
-          path: r.path,
-          locale: r.localeCode
-        })
+        const user = context.req.user
+        if (r.isFolder || r.isPublished) {
+          return WIKI.auth.checkAccess(user, ['read:pages'], {
+            path: r.path,
+            locale: r.localeCode
+          })
+        } else {
+          return WIKI.auth.checkAccess(user, ['manage:system'], {
+            path: r.path,
+            locale: r.localeCode
+          })
+        }
       }).map(r => {
         return {
           ...r,
@@ -525,6 +536,19 @@ module.exports = {
         return {
           responseResult: graphHelper.generateSuccess('Page has been updated.'),
           page
+        }
+      } catch (err) {
+        return graphHelper.generateError(err)
+      }
+    },
+    async publish(obj, args, context) {
+      try {
+        await WIKI.models.pages.updatePublishState({
+          ...args,
+          user: context.req.user
+        })
+        return {
+          responseResult: graphHelper.generateSuccess('Page has been publish.')
         }
       } catch (err) {
         return graphHelper.generateError(err)

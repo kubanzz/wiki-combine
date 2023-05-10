@@ -12,7 +12,7 @@
       v-btn.mx-0(
         outlined
         dark
-        @click.native='close'
+        @click='emitSaveEvent'
         )
         v-icon(left) mdi-check
         span {{ $t('common:actions.ok') }}
@@ -397,6 +397,9 @@ export default {
     }
   },
   methods: {
+    emitSaveEvent() {
+      this.$emit('save-event', 'editor-modal-properties save event')
+    },
     removeTag(tag) {
       this.tags = _.without(this.tags, tag)
     },

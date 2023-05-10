@@ -1,6 +1,7 @@
 import { make } from 'vuex-pathify'
 
 const state = {
+  id: '',
   editor: '',
   editorKey: '',
   content: '',

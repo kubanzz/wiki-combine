@@ -310,7 +310,7 @@
             :loading='loading'
             height=860
             must-sort,
-            sort-by='createdAt',
+            sort-by='updatedAt',
             sort-desc,
             hide-default-footer
             :page.sync='pagination'
@@ -546,7 +546,11 @@ export default {
     commentsPerms: get('page/effectivePermissions@comments'),
     filteredPages () {
       const articles = _.filter(this.pages, pg => {
+        console.debug('filter page：%o', pg)
         if (this.selectedLang !== null && this.selectedLang !== pg.locale) {
+          return false
+        }
+        if (!pg.isPublished) {
           return false
         }
         return true

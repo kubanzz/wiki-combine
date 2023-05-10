@@ -70,28 +70,28 @@ v-container(fluid, grid-list-lg)
               td
                 .body-2: strong {{ props.item.title }}
                 .caption {{ props.item.description }}
-              td
-                v-edit-dialog(
-                  :return-value.sync="props.item.path"
-                  large
-                  @save="save(props.item)"
-                  @open="open(props.item)"
-                  @close="close(props.item)"
-                )  {{ props.item.path }}
+              td {{ props.item.path }}
+                //- v-edit-dialog(
+                //-   :return-value.sync="props.item.path"
+                //-   large
+                //-   @save="save(props.item)"
+                //-   @open="open(props.item)"
+                //-   @close="close(props.item)"
+                //- )  {{ props.item.path }}
 
-                  template( slot='input')
-                    div.mt-4.text-h6 Update Path
-                    v-text-field(
-                      v-model="props.item.path"
-                      label="Edit"
-                      :rules="[rules.path]"
-                      single-line
-                      counter
-                      autofocus
-                    )
+                //-   template( slot='input')
+                //-     div.mt-4.text-h6 Update Path
+                //-     v-text-field(
+                //-       v-model="props.item.path"
+                //-       label="Edit"
+                //-       :rules="[rules.path]"
+                //-       single-line
+                //-       counter
+                //-       autofocus
+                //-     )
 
-              td {{ props.item.createdAt | moment('calendar') }}
-              td {{ props.item.updatedAt | moment('calendar') }}
+              td {{ dateFormat(props.item.createdAt) }}
+              td {{ dateFormat(props.item.updatedAt) }}
 
               td
                 v-btn(
@@ -111,6 +111,7 @@ import _ from 'lodash'
 import pagesQuery from 'gql/admin/pages/pages-query-list.gql'
 import { validPath, illegalPathMsg } from '../../utils/common'
 import { updateBaseInfo } from '../../api/page'
+import {dateFtt} from '../../utils/date-util'
 
 export default {
   data() {
@@ -122,7 +123,7 @@ export default {
       headers: [
         { text: 'ID', value: 'id', width: 80, sortable: true },
         { text: 'Title', value: 'title' },
-        { text: 'Path(点击可修改路径)', value: 'path' },
+        { text: 'Path', value: 'path' },
         { text: 'Created', value: 'createdAt', width: 250 },
         { text: 'Last Updated', value: 'updatedAt', width: 250 },
         { text: 'Page Detail', sortable: false }
@@ -170,6 +171,9 @@ export default {
     }
   },
   methods: {
+    dateFormat (dateStr) {
+      return dateFtt('yyyy-MM-dd hh:mm:ss', new Date(dateStr))
+    },
     async refresh() {
       await this.$apollo.queries.pages.refetch()
       this.$store.commit('showNotification', {

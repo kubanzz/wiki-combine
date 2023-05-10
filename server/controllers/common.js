@@ -177,6 +177,7 @@ router.get(['/e', '/e/*'], async (req, res, next) => {
       content: null,
       title: null,
       description: null,
+      isPublished: false,
       updatedAt: new Date().toISOString(),
       extra: {
         css: '',

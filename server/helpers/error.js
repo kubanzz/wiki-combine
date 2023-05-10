@@ -194,7 +194,7 @@ module.exports = {
     code: 6011
   }),
   PageUpdateForbidden: CustomError('PageUpdateForbidden', {
-    message: 'You are not authorized to update this page.',
+    message: '没有更新权限',
     code: 6009
   }),
   PageViewForbidden: CustomError('PageViewForbidden', {

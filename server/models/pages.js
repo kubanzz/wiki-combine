@@ -441,13 +441,15 @@ module.exports = class Page extends Model {
       throw new WIKI.Error.PageEmptyContent()
     }
 
-    // -> Create version snapshot
-    await WIKI.models.pageHistory.addVersion({
-      ...ogPage,
-      isPublished: ogPage.isPublished === true || ogPage.isPublished === 1,
-      action: opts.action ? opts.action : 'updated',
-      versionDate: ogPage.updatedAt
-    })
+    if (!opts.isAutoUpdate) {
+      // -> Create version snapshot
+      await WIKI.models.pageHistory.addVersion({
+        ...ogPage,
+        isPublished: ogPage.isPublished === true || ogPage.isPublished === 1,
+        action: opts.action ? opts.action : 'updated',
+        versionDate: ogPage.updatedAt
+      })
+    }
 
     // -> Format Extra Properties
     if (!_.isPlainObject(ogPage.extra)) {
@@ -540,6 +542,36 @@ module.exports = class Page extends Model {
     page.updatedAt = await WIKI.models.pages.query().findById(page.id).select('updatedAt').then(r => r.updatedAt)
 
     return page
+  }
+
+  static async updatePublishState(opts) {
+    // -> Fetch original page
+    const ogPage = await WIKI.models.pages.query().findById(opts.id)
+    if (!ogPage) {
+      throw new Error('Invalid Page Id')
+    }
+
+    // -> Check for page access
+    if (!WIKI.auth.checkAccess(opts.user, ['manage:pages'], {
+      locale: ogPage.localeCode,
+      path: ogPage.path
+    })) {
+      throw new WIKI.Error.PageUpdateForbidden()
+    }
+
+    // -> Update page
+    await WIKI.models.pages.query().patch({
+      isPublished: opts.isPublished === true || opts.isPublished === 1
+    }).where('id', ogPage.id)
+
+    let page = await WIKI.models.pages.getPageFromDb(ogPage.id)
+    // -> Update on Storage
+    if (!opts.skipStorage) {
+      await WIKI.models.storage.pageEvent({
+        event: 'updated',
+        page
+      })
+    }
   }
 
   /**

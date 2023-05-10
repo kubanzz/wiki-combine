@@ -149,16 +149,18 @@ export default {
                 parent
                 locale
                 children
+                isPublished
               }
             }
           }
         `,
-        fetchPolicy: 'cache-first',
+        fetchPolicy: 'network-only',
         variables: {
           parent: item.id,
           locale: this.locale
         }
       })
+      console.log(' =================== resp：%o', _.get(resp, 'data.pages.tree'))
       return _.get(resp, 'data.pages.tree', [])
     },
     async fetchBrowseItems (item) {
@@ -189,7 +191,7 @@ export default {
       this.$store.commit(`loadingStop`, 'browse-load')
     },
     buildTree() {
-      console.log('---------------开始构建子树 buildTree ------')
+      console.debug('---------------开始构建子树 buildTree ------')
       return buildPageTree({
         locale: this.locale,
         path: this.path
@@ -197,7 +199,7 @@ export default {
     },
 
     async loadFromCurrentPath() {
-      console.log('---------------开始构造页面树------------------')
+      console.debug('---------------开始构造页面树------------------')
       try {
         let tree = await this.getChildTree({
           id: 0,
@@ -208,19 +210,21 @@ export default {
         console.error('构造页面树失败：' + JSON.stringify(err))
         return
       }
-      console.log('----------一级树 查询完毕----this.path：' + this.path)
+      console.debug('----------一级树 查询完毕----this.path：' + this.path)
       let childrens = []
       if (this.path !== 'home') {
-        let data = await this.buildTree() || {}
-        console.log('---------------子树构建完成 --------')
-        // gql
-        childrens = data.childTree || []
+        // console.log('opens：%o', this.open)
+        // let data = await this.buildTree() || {}
+        // console.info('----------子树构建完成 --------  %o', data)
+        // // // gql
+        // childrens = data.childTree || []
 
-        this.open = childrens
-        if (data.activePage && JSON.stringify(data.activePage) !== '{}') {
-          this.active = this.active.concat(data.activePage)
-        }
-        this.currentPage = this.active
+        // this.open = childrens
+        // if (data.activePage && JSON.stringify(data.activePage) !== '{}') {
+        //   // this.active = this.active.concat(data.activePage)
+        // }
+        // console.info('----------------  %o', this.open)
+        // this.currentPage = this.active
       }
       this.categoryList.forEach(item => {
         if (!item.isFolder) {
@@ -229,7 +233,7 @@ export default {
           item.children = childrens[0].children || []
         }
       })
-      console.log('---------------页面树构建完成------------------')
+      console.debug('---------------页面树构建完成------------------')
     },
 
     goHome () {

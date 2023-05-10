@@ -16,6 +16,7 @@
         v-btn.mr-3.animated.fadeIn(color='amber', outlined, small, v-if='isConflict', @click='openConflict')
           .overline.amber--text.mr-3 Conflict
           status-indicator(intermediary, pulse)
+        <v-switch class='animated fadeInDown mr-3' v-model="this.savedState.isPublished" background-color='rgba(255, 255, 255, 0.2)' color="success" :label='labelText' hide-details @change="togglePublish"></v-switch>
         v-btn.animated.fadeInDown(
           text
           color='green'
@@ -24,7 +25,8 @@
           :class='{ "is-icon": $vuetify.breakpoint.mdAndDown }'
           )
           v-icon(color='green', :left='$vuetify.breakpoint.lgAndUp') mdi-check
-          span.grey--text(v-if='$vuetify.breakpoint.lgAndUp && mode !== `create` && !isDirty') {{ $t('editor:save.saved') }}
+          //- span.grey--text(v-if='$vuetify.breakpoint.lgAndUp && mode !== `create` && !isDirty') {{ $t('editor:save.saved') }}
+          span.grey--text(v-if='$vuetify.breakpoint.lgAndUp && mode !== `create` && !isDirty') {{ this.isSaving ? '保存中' : '保存'}}
           span.white--text(v-else-if='$vuetify.breakpoint.lgAndUp') {{ mode === 'create' ? $t('common:actions.create') : $t('common:actions.save') }}
         v-btn.animated.fadeInDown.wait-p1s(
           text
@@ -46,7 +48,7 @@
         v-divider.ml-3(vertical)
     v-main
       component(:is='currentEditor', :save='save')
-      editor-modal-properties(v-model='dialogProps')
+      editor-modal-properties(v-model='dialogProps' @save-event="handleSaveEvent")
       editor-modal-editorselect(v-model='dialogEditorSelector')
       editor-modal-unsaved(v-model='dialogUnsaved', @discard='exitGo')
       component(:is='activeModal')
@@ -112,7 +114,7 @@ export default {
     },
     isPublished: {
       type: Boolean,
-      default: true
+      default: false
     },
     scriptCss: {
       type: String,
@@ -174,7 +176,8 @@ export default {
         title: '',
         css: '',
         js: ''
-      }
+      },
+      autoSaveTimer: null
     }
   },
   computed: {
@@ -201,6 +204,9 @@ export default {
         this.savedState.css !== this.$store.get('page/scriptCss'),
         this.savedState.js !== this.$store.get('page/scriptJs')
       ], Boolean)
+    },
+    labelText() {
+      return this.savedState.isPublished ? '已发布' : '未发布'
     }
   },
   watch: {
@@ -263,10 +269,124 @@ export default {
       this.isConflict = false
     })
 
+    this.timer = setInterval(() => {
+      if (!this.dialogEditorSelector && !this.dialogProps && !this.isConflict) {
+        this.autoSave()
+      }
+    }, 10000)
     // this.$store.set('editor/mode', 'edit')
     // this.currentEditor = `editorApi`
   },
+  beforeDestroy() {
+    clearInterval(this.autoSaveTimer)
+  },
   methods: {
+    async handleSaveEvent() {
+      this.save()
+    },
+    async togglePublish() {
+      console.debug('============== savedState：%o', this.savedState)
+      let pageTitle = this.$store.get('page/title') || ''
+      if (!pageTitle) {
+        this.$store.set('page/title', '')
+        throw new Error('页面标题不能为空。')
+      }
+
+      if (!validPath(pageTitle)) {
+        this.$store.set('page/title', '')
+        throw new Error(illegalPathMsg)
+      }
+
+      this.showProgressDialog('publishing')
+
+      let resp = await this.$apollo.mutate({
+        mutation: gql`
+          mutation (
+            $id: Int!
+            $content: String
+            $description: String
+            $editor: String
+            $isPrivate: Boolean
+            $isPublished: Boolean
+            $locale: String
+            $path: String
+            $publishEndDate: Date
+            $publishStartDate: Date
+            $scriptCss: String
+            $scriptJs: String
+            $tags: [String]
+            $title: String
+          ) {
+            pages {
+              update(
+                id: $id
+                content: $content
+                description: $description
+                editor: $editor
+                isPrivate: $isPrivate
+                isPublished: $isPublished
+                locale: $locale
+                path: $path
+                publishEndDate: $publishEndDate
+                publishStartDate: $publishStartDate
+                scriptCss: $scriptCss
+                scriptJs: $scriptJs
+                tags: $tags
+                title: $title
+              ) {
+                responseResult {
+                  succeeded
+                  errorCode
+                  slug
+                  message
+                }
+                page {
+                  updatedAt
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          id: this.$store.get('page/id'),
+          content: this.$store.get('editor/content'),
+          description: this.$store.get('page/description'),
+          editor: this.$store.get('editor/editorKey'),
+          locale: this.$store.get('page/locale'),
+          isPrivate: false,
+          isPublished: !this.savedState.isPublished,
+          path: this.$store.get('page/path'),
+          publishEndDate: this.$store.get('page/publishEndDate') || '',
+          publishStartDate: this.$store.get('page/publishStartDate') || '',
+          scriptCss: this.$store.get('page/scriptCss'),
+          scriptJs: this.$store.get('page/scriptJs'),
+          tags: this.$store.get('page/tags'),
+          title: pageTitle
+        }
+      })
+      resp = _.get(resp, 'data.pages.update', {})
+      if (_.get(resp, 'responseResult.succeeded')) {
+        this.checkoutDateActive = _.get(resp, 'page.updatedAt', this.checkoutDateActive)
+        this.isConflict = false
+        this.$store.commit('showNotification', {
+          message: this.$t('editor:save.updateSuccess'),
+          style: 'success',
+          icon: 'check'
+        })
+        this.savedState.isPublished = !this.savedState.isPublished
+        this.$store.set('page/isPublished', this.savedState.isPublished)
+      } else {
+        let errorMessage = ''
+        if (!this.savedState.isPublished) {
+          errorMessage += '取消'
+        }
+        errorMessage += '发布失败'
+        // alert(errorMessage)
+        throw new Error(errorMessage + ' --- ' + _.get(resp, 'responseResult.message'))
+      }
+
+      this.hideProgressDialog()
+    },
     openPropsModal(name) {
       this.dialogProps = true
     },
@@ -387,7 +507,7 @@ export default {
             this.$store.set('editor/id', _.get(resp, 'page.id'))
             this.$store.set('editor/mode', 'update')
             this.exitConfirmed = true
-            window.location.assign(`/${this.$store.get('page/locale')}/${this.$store.get('page/path')}`)
+            window.location.assign(`/e/${this.$store.get('page/locale')}/${this.$store.get('page/path')}`)
           } else {
             throw new Error(_.get(resp, 'responseResult.message'))
           }
@@ -519,6 +639,248 @@ export default {
       this.isSaving = false
       this.hideProgressDialog()
     },
+    async autoSave({ rethrow = false, overwrite = false } = {}) {
+      this.isSaving = true
+
+      const saveTimeoutHandle = setTimeout(() => {
+        throw new Error('Save operation timed out.')
+      }, 30000)
+
+      try {
+        let pageTitle = this.$store.get('page/title') || ''
+        if (!pageTitle) {
+          this.$store.set('page/title', '')
+          throw new Error('页面标题不能为空。')
+        }
+
+        if (!validPath(pageTitle)) {
+          this.$store.set('page/title', '')
+          throw new Error(illegalPathMsg)
+        }
+
+        if (this.$store.get('editor/mode') === 'create') {
+          // --------------------------------------------
+          // -> CREATE PAGE
+          // --------------------------------------------
+          let resp = await this.$apollo.mutate({
+            mutation: gql`
+              mutation (
+                $content: String!
+                $description: String!
+                $editor: String!
+                $isPrivate: Boolean!
+                $isPublished: Boolean!
+                $locale: String!
+                $path: String!
+                $publishEndDate: Date
+                $publishStartDate: Date
+                $scriptCss: String
+                $scriptJs: String
+                $tags: [String]!
+                $title: String!
+              ) {
+                pages {
+                  create(
+                    content: $content
+                    description: $description
+                    editor: $editor
+                    isPrivate: $isPrivate
+                    isPublished: $isPublished
+                    locale: $locale
+                    path: $path
+                    publishEndDate: $publishEndDate
+                    publishStartDate: $publishStartDate
+                    scriptCss: $scriptCss
+                    scriptJs: $scriptJs
+                    tags: $tags
+                    title: $title
+                  ) {
+                    responseResult {
+                      succeeded
+                      errorCode
+                      slug
+                      message
+                    }
+                    page {
+                      id
+                      updatedAt
+                    }
+                  }
+                }
+              }
+            `,
+            variables: {
+              content: this.$store.get('editor/content'),
+              description: this.$store.get('page/description'),
+              editor: this.$store.get('editor/editorKey'),
+              locale: this.$store.get('page/locale'),
+              isPrivate: false,
+              isPublished: this.$store.get('page/isPublished'),
+              path: this.$store.get('page/path'),
+              publishEndDate: this.$store.get('page/publishEndDate') || '',
+              publishStartDate: this.$store.get('page/publishStartDate') || '',
+              scriptCss: this.$store.get('page/scriptCss'),
+              scriptJs: this.$store.get('page/scriptJs'),
+              tags: this.$store.get('page/tags'),
+              title: pageTitle
+            }
+          })
+          resp = _.get(resp, 'data.pages.create', {})
+          if (_.get(resp, 'responseResult.succeeded')) {
+            this.checkoutDateActive = _.get(resp, 'page.updatedAt', this.checkoutDateActive)
+            this.isConflict = false
+            this.$store.commit('showNotification', {
+              message: this.$t('editor:save.createSuccess'),
+              style: 'success',
+              icon: 'check'
+            })
+            this.$store.set('page/id', _.get(resp, 'page.id'))
+            this.$store.set('editor/mode', 'edit')
+
+            this.exitConfirmed = true
+            console.log('自动创建文档成功：%s --- %o', pageTitle, this.$store.get('page/id'))
+            // window.location.assign(`/${this.$store.get('page/locale')}/${this.$store.get('page/path')}`)
+          } else {
+            throw new Error(_.get(resp, 'responseResult.message'))
+          }
+        } else {
+          // --------------------------------------------
+          // -> UPDATE EXISTING PAGE
+          // --------------------------------------------
+
+          console.debug('store：%o', this.$store.get('page/id'))
+
+          const conflictResp = await this.$apollo.query({
+            query: gql`
+              query ($id: Int!, $checkoutDate: Date!) {
+                pages {
+                  checkConflicts(id: $id, checkoutDate: $checkoutDate)
+                }
+              }
+            `,
+            fetchPolicy: 'network-only',
+            variables: {
+              id: this.$store.get('page/id'),
+              checkoutDate: this.checkoutDateActive
+            }
+          })
+          if (_.get(conflictResp, 'data.pages.checkConflicts', false)) {
+            this.$root.$emit('saveConflict')
+            throw new Error(this.$t('editor:conflict.warning'))
+          }
+
+          let resp = await this.$apollo.mutate({
+            mutation: gql`
+              mutation (
+                $id: Int!
+                $content: String
+                $description: String
+                $editor: String
+                $isPrivate: Boolean
+                $isPublished: Boolean
+                $locale: String
+                $path: String
+                $publishEndDate: Date
+                $publishStartDate: Date
+                $scriptCss: String
+                $scriptJs: String
+                $tags: [String]
+                $title: String
+                $isAutoUpdate: Boolean
+              ) {
+                pages {
+                  update(
+                    id: $id
+                    content: $content
+                    description: $description
+                    editor: $editor
+                    isPrivate: $isPrivate
+                    isPublished: $isPublished
+                    locale: $locale
+                    path: $path
+                    publishEndDate: $publishEndDate
+                    publishStartDate: $publishStartDate
+                    scriptCss: $scriptCss
+                    scriptJs: $scriptJs
+                    tags: $tags
+                    title: $title
+                    isAutoUpdate: $isAutoUpdate
+                  ) {
+                    responseResult {
+                      succeeded
+                      errorCode
+                      slug
+                      message
+                    }
+                    page {
+                      updatedAt
+                    }
+                  }
+                }
+              }
+            `,
+            variables: {
+              id: this.$store.get('page/id'),
+              content: this.$store.get('editor/content'),
+              description: this.$store.get('page/description'),
+              editor: this.$store.get('editor/editorKey'),
+              locale: this.$store.get('page/locale'),
+              isPrivate: false,
+              isPublished: this.$store.get('page/isPublished'),
+              path: this.$store.get('page/path'),
+              publishEndDate: this.$store.get('page/publishEndDate') || '',
+              publishStartDate: this.$store.get('page/publishStartDate') || '',
+              scriptCss: this.$store.get('page/scriptCss'),
+              scriptJs: this.$store.get('page/scriptJs'),
+              tags: this.$store.get('page/tags'),
+              title: pageTitle,
+              isAutoUpdate: true
+            }
+          })
+
+          resp = _.get(resp, 'data.pages.update', {})
+          if (_.get(resp, 'responseResult.succeeded')) {
+            this.checkoutDateActive = _.get(resp, 'page.updatedAt', this.checkoutDateActive)
+            this.isConflict = false
+            this.$store.commit('showNotification', {
+              message: this.$t('editor:save.updateSuccess'),
+              style: 'success',
+              icon: 'check'
+            })
+            if (this.locale !== this.$store.get('page/locale') || this.path !== this.$store.get('page/path')) {
+              _.delay(() => {
+                window.location.replace(`/e/${this.$store.get('page/locale')}/${this.$store.get('page/path')}`)
+              }, 1000)
+            }
+
+            const currentDate = new Date()
+            const dateTimeString = currentDate.toLocaleString()
+            console.log(dateTimeString + ' -- 自动保存文档 [%o]', pageTitle)
+          } else {
+            throw new Error(_.get(resp, 'responseResult.message'))
+          }
+        }
+
+        this.initContentParsed = this.$store.get('editor/content')
+        this.setCurrentSavedState()
+        this.routPath = this.path
+      } catch (err) {
+        console.log('================= 发生错误：%o', err)
+        this.$store.commit('showNotification', {
+          message: err.message,
+          style: 'error',
+          icon: 'warning'
+        })
+        if (rethrow === true) {
+          clearTimeout(saveTimeoutHandle)
+          this.isSaving = false
+          this.hideProgressDialog()
+          throw err
+        }
+      }
+      clearTimeout(saveTimeoutHandle)
+      this.isSaving = false
+    },
     async saveAndClose() {
       try {
         if (this.$store.get('editor/mode') === 'create') {
@@ -621,5 +983,4 @@ export default {
   .atom-spinner.is-inline {
     display: inline-block;
   }
-
 </style>
