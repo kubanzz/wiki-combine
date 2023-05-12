@@ -572,6 +572,8 @@ module.exports = class Page extends Model {
         page
       })
     }
+
+    await WIKI.models.pages.deletePageFromCache(page.hash)
   }
 
   /**
@@ -1509,6 +1511,7 @@ module.exports = class Page extends Model {
    * @returns {Promise} Promise with no value
    */
   static async deletePageFromCache(hash) {
+    console.log('删除缓存文件：%s', hash)
     return fs.remove(path.resolve(WIKI.ROOTPATH, WIKI.config.dataPath, `cache/${hash}.bin`))
   }
 

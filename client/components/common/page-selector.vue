@@ -517,11 +517,19 @@ export default {
     },
     async batchMove() {
       if (this.checkBoxSelectedArray.length === 0) {
-        alert('请选择要移动的文件夹')
+        this.$store.commit('showNotification', {
+          message: '请选择要移动的文件夹',
+          style: 'error',
+          icon: 'check'
+        })
         return
       }
       if (this.batchMove_currentPath === '') {
-        alert('请选择目标文件夹路径')
+        this.$store.commit('showNotification', {
+          message: '请选择目标文件夹',
+          style: 'error',
+          icon: 'check'
+        })
         return
       }
       const sourceObjectArray = this.checkBoxSelectedArray.map(obj => {
@@ -556,8 +564,8 @@ export default {
         }
       })
 
-      console.log('tree：%o', this.tree)
-      console.log('batch-move-resp：%o', resp)
+      console.debug('tree：%o', this.tree)
+      console.debug('batch-move-resp：%o', resp)
       const result = _.get(resp, 'data.pages.batchMove')
 
       if (result.responseResult.succeeded === true) {
@@ -610,7 +618,12 @@ export default {
       }
 
       console.log('文件迁移后：tree：%o === this.batchMove_tree：%o', this.tree, this.batchMove_tree)
-      alert(result.responseResult.message)
+      //- alert(result.responseResult.message)
+      this.$store.commit('showNotification', {
+        message: this.$t('result.responseResult.message'),
+        style: 'success',
+        icon: 'check'
+      })
     },
     async reloadOpenNodes() {
       _.sortBy(this.openNodes)

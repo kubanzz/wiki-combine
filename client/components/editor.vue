@@ -658,92 +658,7 @@ export default {
           throw new Error(illegalPathMsg)
         }
 
-        if (this.$store.get('editor/mode') === 'create') {
-          // --------------------------------------------
-          // -> CREATE PAGE
-          // --------------------------------------------
-          let resp = await this.$apollo.mutate({
-            mutation: gql`
-              mutation (
-                $content: String!
-                $description: String!
-                $editor: String!
-                $isPrivate: Boolean!
-                $isPublished: Boolean!
-                $locale: String!
-                $path: String!
-                $publishEndDate: Date
-                $publishStartDate: Date
-                $scriptCss: String
-                $scriptJs: String
-                $tags: [String]!
-                $title: String!
-              ) {
-                pages {
-                  create(
-                    content: $content
-                    description: $description
-                    editor: $editor
-                    isPrivate: $isPrivate
-                    isPublished: $isPublished
-                    locale: $locale
-                    path: $path
-                    publishEndDate: $publishEndDate
-                    publishStartDate: $publishStartDate
-                    scriptCss: $scriptCss
-                    scriptJs: $scriptJs
-                    tags: $tags
-                    title: $title
-                  ) {
-                    responseResult {
-                      succeeded
-                      errorCode
-                      slug
-                      message
-                    }
-                    page {
-                      id
-                      updatedAt
-                    }
-                  }
-                }
-              }
-            `,
-            variables: {
-              content: this.$store.get('editor/content'),
-              description: this.$store.get('page/description'),
-              editor: this.$store.get('editor/editorKey'),
-              locale: this.$store.get('page/locale'),
-              isPrivate: false,
-              isPublished: this.$store.get('page/isPublished'),
-              path: this.$store.get('page/path'),
-              publishEndDate: this.$store.get('page/publishEndDate') || '',
-              publishStartDate: this.$store.get('page/publishStartDate') || '',
-              scriptCss: this.$store.get('page/scriptCss'),
-              scriptJs: this.$store.get('page/scriptJs'),
-              tags: this.$store.get('page/tags'),
-              title: pageTitle
-            }
-          })
-          resp = _.get(resp, 'data.pages.create', {})
-          if (_.get(resp, 'responseResult.succeeded')) {
-            this.checkoutDateActive = _.get(resp, 'page.updatedAt', this.checkoutDateActive)
-            this.isConflict = false
-            this.$store.commit('showNotification', {
-              message: this.$t('editor:save.createSuccess'),
-              style: 'success',
-              icon: 'check'
-            })
-            this.$store.set('page/id', _.get(resp, 'page.id'))
-            this.$store.set('editor/mode', 'edit')
-
-            this.exitConfirmed = true
-            console.log('自动创建文档成功：%s --- %o', pageTitle, this.$store.get('page/id'))
-            // window.location.assign(`/${this.$store.get('page/locale')}/${this.$store.get('page/path')}`)
-          } else {
-            throw new Error(_.get(resp, 'responseResult.message'))
-          }
-        } else {
+        if (this.$store.get('editor/mode') === 'update' || this.$store.get('editor/mode') === 'edit') {
           // --------------------------------------------
           // -> UPDATE EXISTING PAGE
           // --------------------------------------------
@@ -842,11 +757,6 @@ export default {
           if (_.get(resp, 'responseResult.succeeded')) {
             this.checkoutDateActive = _.get(resp, 'page.updatedAt', this.checkoutDateActive)
             this.isConflict = false
-            this.$store.commit('showNotification', {
-              message: this.$t('editor:save.updateSuccess'),
-              style: 'success',
-              icon: 'check'
-            })
             if (this.locale !== this.$store.get('page/locale') || this.path !== this.$store.get('page/path')) {
               _.delay(() => {
                 window.location.replace(`/e/${this.$store.get('page/locale')}/${this.$store.get('page/path')}`)
@@ -860,12 +770,11 @@ export default {
             throw new Error(_.get(resp, 'responseResult.message'))
           }
         }
-
         this.initContentParsed = this.$store.get('editor/content')
         this.setCurrentSavedState()
         this.routPath = this.path
       } catch (err) {
-        console.log('================= 发生错误：%o', err)
+        console.debug('自动保存发生错误：%o', err)
         this.$store.commit('showNotification', {
           message: err.message,
           style: 'error',

@@ -128,6 +128,7 @@ export default {
       })
       resp = _.get(resp, 'data.pages.publish', {})
       if (_.get(resp, 'responseResult.succeeded')) {
+        this.$store.set('page/isPublished', props.item.isPublished)
       } else {
         console.log(' ============== resp：%o', resp)
         let errorMessage = ''

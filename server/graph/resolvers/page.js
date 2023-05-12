@@ -315,7 +315,7 @@ module.exports = {
       }
       const results = await WIKI.models.knex('pageTree')
         .leftJoin('pages', 'pageTree.pageId', 'pages.id')
-        .select('pageTree.*', 'pages.isPublished', 'pages.creatorId')
+        .select('pageTree.*', 'pages.isPublished', 'pages.creatorId', 'pages.authorId')
         .where(builder => {
           builder.where('pageTree.localeCode', args.locale)
           switch (args.mode) {
@@ -344,10 +344,12 @@ module.exports = {
             locale: r.localeCode
           })
         } else {
-          return WIKI.auth.checkAccess(user, ['manage:system'], {
+          let roleAccess = WIKI.auth.checkAccess(user, ['manage:system'], {
             path: r.path,
             locale: r.localeCode
           })
+          let authorAccess = (user.id === r.creatorId || user.id === r.authorId)
+          return roleAccess || authorAccess
         }
       }).map(r => {
         return {
