@@ -126,6 +126,9 @@ export default {
     close () {
       this.isRemoteConfirmDiagShown = false
       this.activeModal = ''
+      setTimeout(() => {
+        this.$root.$emit('dialog-conflict-close')
+      }, 500)
     },
     overwriteAndClose() {
       this.checkoutDateActive = this.latest.updatedAt

@@ -165,6 +165,7 @@ export default {
       dialogProgress: false,
       dialogEditorSelector: false,
       dialogUnsaved: false,
+      dialogConfict: false,
       exitConfirmed: false,
       initContentParsed: '',
       savedState: {
@@ -270,10 +271,15 @@ export default {
     })
 
     this.timer = setInterval(() => {
-      if (!this.dialogEditorSelector && !this.dialogProps && !this.isConflict) {
+      console.debug('dialogEditorSelector：%o === dialogProps：%o === isConflict：%o === isDirty：%o', this.dialogEditorSelector, this.dialogProps, this.isConflict, this.isDirty)
+      if (!this.dialogConfict && !this.dialogEditorSelector && !this.dialogProps && this.isDirty) {
         this.autoSave()
       }
-    }, 10000)
+    }, 5000)
+
+    this.$root.$on('dialog-conflict-close', () => {
+      this.dialogConfict = false
+    })
     // this.$store.set('editor/mode', 'edit')
     // this.currentEditor = `editorApi`
   },
@@ -398,6 +404,7 @@ export default {
     },
     openConflict() {
       this.$root.$emit('saveConflict')
+      this.dialogConfict = true
     },
     async save({ rethrow = false, overwrite = false } = {}) {
       this.showProgressDialog('saving')
@@ -680,7 +687,7 @@ export default {
             }
           })
           if (_.get(conflictResp, 'data.pages.checkConflicts', false)) {
-            this.$root.$emit('saveConflict')
+            this.openConflict()
             throw new Error(this.$t('editor:conflict.warning'))
           }
 

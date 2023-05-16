@@ -615,7 +615,7 @@ export default {
     this.$store.set('page/title', this.title)
     this.$store.set('page/editor', this.editor)
     this.$store.set('page/updatedAt', this.updatedAt)
-    console.log(' ========================== effectivePermissions： %o', JSON.parse(Buffer.from(this.effectivePermissions, 'base64').toString()))
+    console.debug('effectivePermissions： %o', JSON.parse(Buffer.from(this.effectivePermissions, 'base64').toString()))
     if (this.effectivePermissions) {
       this.$store.set('page/effectivePermissions', JSON.parse(Buffer.from(this.effectivePermissions, 'base64').toString()))
     }
