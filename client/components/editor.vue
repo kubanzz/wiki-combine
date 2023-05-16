@@ -487,7 +487,7 @@ export default {
               }
             `,
             variables: {
-              content: this.$store.get('editor/content'),
+              content: this.$store.get('editor/content') === '' ? 'page content here' : this.$store.get('editor/content'),
               description: this.$store.get('page/description'),
               editor: this.$store.get('editor/editorKey'),
               locale: this.$store.get('page/locale'),
@@ -502,6 +502,7 @@ export default {
               title: pageTitle
             }
           })
+          console.debug('editor/content ', this.$store.get('editor/content'))
           resp = _.get(resp, 'data.pages.create', {})
           if (_.get(resp, 'responseResult.succeeded')) {
             this.checkoutDateActive = _.get(resp, 'page.updatedAt', this.checkoutDateActive)
@@ -621,6 +622,7 @@ export default {
                 window.location.replace(`/e/${this.$store.get('page/locale')}/${this.$store.get('page/path')}`)
               }, 1000)
             }
+            this.dialogProps = false
           } else {
             throw new Error(_.get(resp, 'responseResult.message'))
           }

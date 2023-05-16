@@ -465,6 +465,16 @@ export default {
       const deleteObjectArray = this.checkBoxSelectedArray.map(obj => {
         return { path: obj.path, isFolder: obj.isFolder }
       })
+
+      if (deleteObjectArray.length === 0) {
+        this.$store.commit('showNotification', {
+          message: '请选择要删除的文件',
+          style: 'error',
+          icon: 'check'
+        })
+        this.deleteDialog = false
+        return
+      }
       const resp = await this.$apollo.mutate({
         mutation: gql`
           mutation (
@@ -500,7 +510,11 @@ export default {
         this.deleteDialog = false
       }
 
-      alert(result.message)
+      this.$store.commit('showNotification', {
+        message: result.message,
+        style: 'success',
+        icon: 'check'
+      })
     },
     onNodeActivated(item) {
       const target = this.all.find(obj => obj.id === item[0])
@@ -569,7 +583,7 @@ export default {
       const result = _.get(resp, 'data.pages.batchMove')
 
       if (result.responseResult.succeeded === true) {
-        console.log('=============== openOnClick：%o', this.openOnClick)
+        console.debug('openOnClick：%o', this.openOnClick)
 
         // 需要刷新的节点即为当前打开的 + 当前选中的
         let openNodesCopy = this.openNodes.slice()
@@ -581,7 +595,7 @@ export default {
         await openNodesCopy.sort((a, b) => a - b)
         await batchMoveOpenNodesCopy.sort((a, b) => a - b)
 
-        console.log('排序后的数组：%o', this.openNodes)
+        console.debug('排序后的数组：%o', this.openNodes)
         for (let i = 0; i < openNodesCopy.length; i++) {
           console.debug('开始查找前节点数据：id：%o --- tree：%o', openNodesCopy[i], this.tree)
           let item = await this.findTreeItemById(this.tree, openNodesCopy[i])
@@ -617,10 +631,9 @@ export default {
         this.batchMove_openNodes = batchMoveOpenNodesCopy
       }
 
-      console.log('文件迁移后：tree：%o === this.batchMove_tree：%o', this.tree, this.batchMove_tree)
-      //- alert(result.responseResult.message)
+      console.debug('文件迁移后：tree：%o === this.batchMove_tree：%o', this.tree, this.batchMove_tree)
       this.$store.commit('showNotification', {
-        message: this.$t('result.responseResult.message'),
+        message: result.responseResult.message,
         style: 'success',
         icon: 'check'
       })
@@ -796,7 +809,7 @@ export default {
           locale: this.currentLocale
         }
       })
-      const items = _.get(resp, 'data.pages.tree', [])
+      const items = _.get(resp, 'data.pages.tree', []).filter(f => f.path !== 'home')
       const itemFolders = _.filter(items, ['isFolder', true]).map(f => ({...f, children: [], checked: false}))
       const itemPages = _.filter(items, i => i.pageId > 0).map(f => ({...f, checked: false}))
 

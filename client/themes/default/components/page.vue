@@ -550,7 +550,7 @@ export default {
         if (this.selectedLang !== null && this.selectedLang !== pg.locale) {
           return false
         }
-        if (!pg.isPublished) {
+        if (!pg.isPublished || pg.path === 'home') {
           return false
         }
         return true

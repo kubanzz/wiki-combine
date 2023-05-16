@@ -160,7 +160,7 @@ export default {
           locale: this.locale
         }
       })
-      console.log(' =================== resp：%o', _.get(resp, 'data.pages.tree'))
+      console.debug('resp：%o', _.get(resp, 'data.pages.tree'))
       return _.get(resp, 'data.pages.tree', [])
     },
     async fetchBrowseItems (item) {
@@ -205,7 +205,8 @@ export default {
           id: 0,
           title: '/ (root)'
         })
-        this.categoryList = tree
+
+        this.categoryList = tree.filter(f => f.path !== 'home')
       } catch (err) {
         console.error('构造页面树失败：' + JSON.stringify(err))
         return

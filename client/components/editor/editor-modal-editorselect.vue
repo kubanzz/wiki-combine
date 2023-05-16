@@ -6,7 +6,7 @@
         .subtitle-1.white--text {{$t('editor:select.title')}}
         v-container(grid-list-lg, fluid)
           v-layout(row, wrap, justify-center)
-            v-flex(xs4)
+            //- v-flex(xs4)
               v-hover
                 template(v-slot:default='{ hover }')
                   v-card.radius-7.primary.animated.fadeInUp(
@@ -26,7 +26,7 @@
                         opacity='.8'
                         )
                         .body-2.mt-7 Coming Soon
-            v-flex(xs4)
+            //- v-flex(xs4)
               v-hover
                 template(v-slot:default='{ hover }')
                   v-card.radius-7.primary.animated.fadeInUp.wait-p1s(
@@ -46,7 +46,7 @@
                         opacity='.8'
                         )
                         .body-2.mt-7 Coming Soon
-            v-flex(xs4)
+            v-flex(xs6)
               v-card.radius-7.animated.fadeInUp.wait-p2s(
                 hover
                 light
@@ -56,7 +56,7 @@
                   img(src='/_assets/svg/editor-icon-code.svg', alt='Code', style='width: 36px;')
                   .body-2.primary--text.mt-2 Code
                   .caption.grey--text Raw HTML
-            v-flex(xs4)
+            v-flex(xs6)
               v-card.radius-7.animated.fadeInUp.wait-p1s(
                 hover
                 light
@@ -66,27 +66,7 @@
                   img(src='/_assets/svg/editor-icon-markdown.svg', alt='Markdown', style='width: 36px;')
                   .body-2.primary--text.mt-2 Markdown
                   .caption.grey--text Plain Text Formatting
-            v-flex(xs4)
-              v-hover
-                template(v-slot:default='{ hover }')
-                  v-card.radius-7.primary.animated.fadeInUp.wait-p2s(
-                    hover
-                    light
-                    ripple
-                    )
-                    v-card-text.text-center(@click='')
-                      img(src='/_assets/svg/editor-icon-tabular.svg', alt='Tabular', style='width: 36px; opacity: .5;')
-                      .body-2.blue--text.mt-2.text--lighten-2 Tabular
-                      .caption.blue--text.text--lighten-1 Excel-like
-                    v-fade-transition
-                      v-overlay(
-                        v-if='hover'
-                        absolute
-                        color='primary'
-                        opacity='.8'
-                        )
-                        .body-2.mt-7 Coming Soon
-            v-flex(xs4)
+            v-flex(xs6)
               v-card.radius-7.animated.fadeInUp.wait-p3s(
                 hover
                 light
@@ -96,6 +76,26 @@
                   img(src='/_assets/svg/editor-icon-ckeditor.svg', alt='Visual Editor', style='width: 36px;')
                   .body-2.mt-2.primary--text Visual Editor
                   .caption.grey--text Rich-text WYSIWYG
+            v-flex(xs6)
+              v-hover
+                template(v-slot:default='{ hover }')
+                  v-card.radius-7.primary.animated.fadeInUp.wait-p2s(
+                    hover
+                    light
+                    ripple
+                    )
+                    v-card-text.text-center(@click='')
+                      img(src='/_assets/svg/editor-icon-wikitext.svg', alt='Others', style='width: 36px; opacity: .5;')
+                      .body-2.blue--text.mt-2.text--lighten-2 Others
+                      .caption.blue--text.text--lighten-1 ---
+                    v-fade-transition
+                      v-overlay(
+                        v-if='hover'
+                        absolute
+                        color='primary'
+                        opacity='.8'
+                        )
+                        .body-2.mt-7 Coming Soon
         //- .caption.blue--text.text--lighten-2 {{$t('editor:select.cannotChange')}}
 
     v-card.radius-7.mt-2(color='teal darken-3', dark)
@@ -103,7 +103,7 @@
         .subtitle-1.white--text {{$t('editor:select.customView')}}
         v-container(grid-list-lg, fluid)
           v-layout(row, wrap, justify-center)
-            v-flex(xs4)
+            v-flex(xs6)
               v-hover
                 template(v-slot:default='{ hover }')
                   v-card.radius-7.animated.fadeInUp(
@@ -115,7 +115,7 @@
                       img(src='/_assets/svg/icon-cube.svg', alt='From Template', style='width: 42px; opacity: .5;')
                       .body-2.mt-1.teal--text From Template
                       .caption.grey--text Use an existing page...
-            v-flex(xs4)
+            //- v-flex(xs4)
               v-hover
                 template(v-slot:default='{ hover }')
                   v-card.radius-7.teal.animated.fadeInUp.wait-p1s(
@@ -128,7 +128,7 @@
                       img(src='/_assets/svg/icon-route.svg', alt='Redirection', style='width: 42px; opacity: .5;')
                       .body-2.mt-1.teal--text.text--lighten-2 Redirection
                       .caption.teal--text.text--lighten-1 Redirect the user to...
-            v-flex(xs4)
+            v-flex(xs6)
               v-hover
                 template(v-slot:default='{ hover }')
                   v-card.radius-7.teal.animated.fadeInUp.wait-p2s(
@@ -137,9 +137,9 @@
                     ripple
                     )
                     v-card-text.text-center(@click='')
-                      img(src='/_assets/svg/icon-sewing-patch.svg', alt='Code', style='width: 42px; opacity: .5;')
-                      .body-2.mt-1.teal--text.text--lighten-2 Embed
-                      .caption.teal--text.text--lighten-1 Include external pages
+                      img(src='/_assets/svg/icon-sewing-patch.svg', alt='Others', style='width: 42px; opacity: .5;')
+                      .body-2.mt-1.teal--text.text--lighten-2 Others
+                      .caption.teal--text.text--lighten-1 ---
                     v-fade-transition
                       v-overlay(
                         v-if='hover'
@@ -148,7 +148,7 @@
                         opacity='.8'
                         )
                         .body-2.mt-7 Coming Soon
-    v-hover
+    //- v-hover
       template(v-slot:default='{ hover }')
         v-card.radius-7.mt-2(color='indigo darken-3', dark)
           v-toolbar(dense, flat, color='light-green darken-3')
