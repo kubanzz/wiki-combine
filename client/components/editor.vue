@@ -407,6 +407,10 @@ export default {
       this.dialogConfict = true
     },
     async save({ rethrow = false, overwrite = false } = {}) {
+      if (this.isSaving) {
+        return
+      }
+
       this.showProgressDialog('saving')
       this.isSaving = true
 
@@ -649,8 +653,11 @@ export default {
       this.hideProgressDialog()
     },
     async autoSave({ rethrow = false, overwrite = false } = {}) {
-      this.isSaving = true
+      if (this.isSaving) {
+        return
+      }
 
+      this.isSaving = true
       const saveTimeoutHandle = setTimeout(() => {
         throw new Error('Save operation timed out.')
       }, 30000)

@@ -1,5 +1,5 @@
 <template lang='pug'>
-  .editor-ckeditor
+  .editor-ckeditor(@keydown="handleKeyDown")
     div(ref='toolbarContainer')
     div.contents(ref='editor')
     v-system-bar.editor-ckeditor-sysbar(dark, status, color='grey darken-3')
@@ -55,6 +55,21 @@ export default {
     activeModal: sync('editor/activeModal')
   },
   methods: {
+    handleKeyDown(event) {
+      console.log('监听到键盘事件')
+      // 检查是否按下了 Ctrl 键（Mac 上为 Command 键）
+      const isCtrlPressed = event.ctrlKey || event.metaKey
+
+      // 检查是否按下了 S 键
+      const isSPressed = event.key === 's'
+
+      // 如果同时按下了 Ctrl + S 键，则执行保存事件
+      if (isCtrlPressed && isSPressed) {
+        // 阻止默认的保存事件
+        event.preventDefault()
+        this.save()
+      }
+    },
     insertLink () {
       this.insertLinkDialog = true
     },

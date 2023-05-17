@@ -46,16 +46,16 @@
                         opacity='.8'
                         )
                         .body-2.mt-7 Coming Soon
-            v-flex(xs6)
-              v-card.radius-7.animated.fadeInUp.wait-p2s(
-                hover
-                light
-                ripple
-                )
-                v-card-text.text-center(@click='selectEditor("code")')
-                  img(src='/_assets/svg/editor-icon-code.svg', alt='Code', style='width: 36px;')
-                  .body-2.primary--text.mt-2 Code
-                  .caption.grey--text Raw HTML
+            //- v-flex(xs6)
+            //-   v-card.radius-7.animated.fadeInUp.wait-p2s(
+            //-     hover
+            //-     light
+            //-     ripple
+            //-     )
+            //-     v-card-text.text-center(@click='selectEditor("code")')
+            //-       img(src='/_assets/svg/editor-icon-code.svg', alt='Code', style='width: 36px;')
+            //-       .body-2.primary--text.mt-2 Code
+            //-       .caption.grey--text Raw HTML
             v-flex(xs6)
               v-card.radius-7.animated.fadeInUp.wait-p1s(
                 hover
@@ -79,6 +79,18 @@
             v-flex(xs6)
               v-hover
                 template(v-slot:default='{ hover }')
+                  v-card.radius-7.animated.fadeInUp(
+                    hover
+                    light
+                    ripple
+                    )
+                    v-card-text.text-center(@click='fromTemplate')
+                      img(src='/_assets/svg/icon-cube.svg', alt='From Template', style='width: 42px; opacity: .5;')
+                      .body-2.mt-1.teal--text From Template
+                      .caption.grey--text Use an existing page...
+            v-flex(xs6)
+              v-hover
+                template(v-slot:default='{ hover }')
                   v-card.radius-7.primary.animated.fadeInUp.wait-p2s(
                     hover
                     light
@@ -98,7 +110,7 @@
                         .body-2.mt-7 Coming Soon
         //- .caption.blue--text.text--lighten-2 {{$t('editor:select.cannotChange')}}
 
-    v-card.radius-7.mt-2(color='teal darken-3', dark)
+    //- v-card.radius-7.mt-2(color='teal darken-3', dark)
       v-card-text.text-center.py-4
         .subtitle-1.white--text {{$t('editor:select.customView')}}
         v-container(grid-list-lg, fluid)
