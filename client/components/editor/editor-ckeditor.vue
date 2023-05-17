@@ -56,7 +56,6 @@ export default {
   },
   methods: {
     handleKeyDown(event) {
-      console.log('监听到键盘事件')
       // 检查是否按下了 Ctrl 键（Mac 上为 Command 键）
       const isCtrlPressed = event.ctrlKey || event.metaKey
 

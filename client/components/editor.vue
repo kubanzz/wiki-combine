@@ -271,7 +271,7 @@ export default {
     })
 
     this.timer = setInterval(() => {
-      console.debug('dialogEditorSelector：%o === dialogProps：%o === isConflict：%o === isDirty：%o', this.dialogEditorSelector, this.dialogProps, this.isConflict, this.isDirty)
+      console.info('dialogEditorSelector：%o === dialogProps：%o === isConflict：%o === isDirty：%o', this.dialogEditorSelector, this.dialogProps, this.dialogConfict, this.isDirty)
       if (!this.dialogConfict && !this.dialogEditorSelector && !this.dialogProps && this.isDirty) {
         this.autoSave()
       }
@@ -511,11 +511,11 @@ export default {
           if (_.get(resp, 'responseResult.succeeded')) {
             this.checkoutDateActive = _.get(resp, 'page.updatedAt', this.checkoutDateActive)
             this.isConflict = false
-            this.$store.commit('showNotification', {
-              message: this.$t('editor:save.createSuccess'),
-              style: 'success',
-              icon: 'check'
-            })
+            // this.$store.commit('showNotification', {
+            //   message: this.$t('editor:save.createSuccess'),
+            //   style: 'success',
+            //   icon: 'check'
+            // })
             this.$store.set('editor/id', _.get(resp, 'page.id'))
             this.$store.set('editor/mode', 'update')
             this.exitConfirmed = true
@@ -783,6 +783,7 @@ export default {
             const dateTimeString = currentDate.toLocaleString()
             console.log(dateTimeString + ' -- 自动保存文档 [%o]', pageTitle)
           } else {
+            this.isSaving = false
             throw new Error(_.get(resp, 'responseResult.message'))
           }
         }
