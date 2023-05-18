@@ -22,6 +22,14 @@ RUN yarn build
 RUN rm -rf /wiki/node_modules
 RUN yarn --production --frozen-lockfile --non-interactive
 
+# ENV NPM_REGISTRY=https://registry.npm.taobao.org/
+# RUN npm config set registry $NPM_REGISTRY
+# RUN npm cache clean --force
+# RUN npm ci --only=production --no-audit
+# RUN yarn build
+# RUN rm -rf /wiki/node_modules
+# RUN npm ci --production --no-audit
+
 # ===============
 # --- Release ---
 # ===============

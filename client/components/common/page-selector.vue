@@ -47,8 +47,10 @@
                   <v-hover v-slot:default="{ hover }">
                     <div>
                       <span v-if="!item.editing">{{item.title}}</span>
-                      <v-icon v-if="hover && !item.editing && hasAdminPermission" :class="{ 'icon-operate': hover }" class="mdi mdi-plus" @click="createFolder(item, true)" style="margin-right: 0.5em;"></v-icon>
-                      <v-icon v-if="item.id != 0 && hover && !item.editing && hasAdminPermission" :class="{ 'icon-operate': hover }" class="mdi mdi-pencil" @click="editFolder(item)"></v-icon>
+                      <span class="icon-group">
+                        <v-icon v-if="hover && !item.editing && hasAdminPermission" :class="{ 'icon-operate': hover }" class="mdi mdi-plus" @click="createFolder(item, false)" style="margin-right: 0.3em;"></v-icon>
+                        <v-icon v-if="item.id != 0 && hover && !item.editing && hasAdminPermission" :class="{ 'icon-operate': hover }" class="mdi mdi-pencil" @click="editFolder(item)"></v-icon>
+                      </span>
                       <v-text-field v-if="item.editing" v-model="item.title" :ref="`input-${item.id}`" :id="`input-${item.id}`" hide-details solo hide-details dense flat clearable>
                       </v-text-field>
                     </div>
@@ -234,8 +236,10 @@
                   <v-hover v-if="item.isFolder === true || item.id === 0" v-slot:default="{ hover }">
                     <div>
                       <span v-if="!item.editing">{{item.title}}</span>
-                      <v-icon v-if="hover && !item.editing && hasAdminPermission" :class="{ 'icon-operate': hover }" class="mdi mdi-plus" @click="createFolder(item, true)" style="margin-right: 0.5em;"></v-icon>
-                      <v-icon v-if="item.id != 0 && hover && !item.editing && hasAdminPermission" :class="{ 'icon-operate': hover }" class="mdi mdi-pencil" @click="editFolder(item)"></v-icon>
+                      <span class="icon-group">
+                        <v-icon v-if="hover && !item.editing && hasAdminPermission" :class="{ 'icon-operate': hover }" class="mdi mdi-plus" @click="createFolder(item, true)" style="margin-right: 0.3em;"></v-icon>
+                        <v-icon v-if="item.id != 0 && hover && !item.editing && hasAdminPermission" :class="{ 'icon-operate': hover }" class="mdi mdi-pencil" @click="editFolder(item)"></v-icon>
+                      </span>
                       <v-text-field v-if="item.editing" v-model="item.title" :ref="`input-${item.id}`" :id="`input-${item.id}`" hide-details solo dense flat clearable>
                       </v-text-field>
                     </div>
@@ -870,7 +874,11 @@ export default {
       let index = fileList.findIndex(file => file.path === newPath)
       console.debug('filelist: %o', fileList)
       if (index !== -1) {
-        alert('重复文件名: ' + item.title)
+        this.$store.commit('showNotification', {
+          message: '重复文件名：' + item.title,
+          style: 'error',
+          icon: 'check'
+        })
         item.title = _.last(item.path.split('/'))
         return
       }
@@ -879,17 +887,18 @@ export default {
       if (oldPath === newPath) return
       await this.updateFolderName(oldPath, newPath, item.isFolder)
 
-      let sourceUpdateItem = this.findTreeItemById(this.tree, item.parent)
-      let targetUpdateItem = this.findTreeItemById(this.batchMove_tree, item.parent)
-      this.fetchFoldersAndPages(sourceUpdateItem)
-      this.fetchFolders(targetUpdateItem)
+      //- let sourceUpdateItem = this.findTreeItemById(this.tree, item.parent)
+      //- let targetUpdateItem = this.findTreeItemById(this.batchMove_tree, item.parent)
+      //- this.fetchFoldersAndPages(sourceUpdateItem)
+      //- this.fetchFolders(targetUpdateItem)
 
       await this.openNodes.sort()
       await this.batchMove_openNodes.sort()
       for (let i = 0; i < this.openNodes.length; i++) {
         let item = await this.findTreeItemById(this.tree, this.openNodes[i])
         console.debug('%o--sourceTree: %o === targetTree-%o: %o', item, this.tree, this.batchMove_tree)
-        await this.fetchFoldersAndPages(item)
+        if (this.mode === 'batch-move') await this.fetchFoldersAndPages(item)
+        else await this.fetchFolders(item)
       }
 
       for (let i = 0; i < this.batchMove_openNodes.length; i++) {
@@ -929,10 +938,13 @@ export default {
       })
       console.log('add page resp：', resp)
       resp = _.get(resp, 'data.pages.updateFolderPath', {})
-      alert(resp.responseResult.message)
+      this.$store.commit('showNotification', {
+        message: resp.responseResult.message,
+        style: 'success',
+        icon: 'check'
+      })
     },
     async createFolder(item, batchMoveFlag = false) {
-      console.log('createFoler')
       this.newName = ''
 
       const folderId = Math.floor(Math.random() * 1000000000)
@@ -984,8 +996,9 @@ export default {
             newFolder.id = uploadFolderId
             await this.fetchFolders(item)
 
+            console.log(' =============== batchMoveFlag：' + batchMoveFlag)
             let sourceTreeItem = this.findTreeItemById(this.tree, item.id)
-            if (sourceTreeItem) await this.fetchFoldersAndPages(sourceTreeItem)
+            if (sourceTreeItem && batchMoveFlag) await this.fetchFoldersAndPages(sourceTreeItem)
           }
         })
 
@@ -1002,7 +1015,7 @@ export default {
               await this.fetchFolders(item)
 
               let sourceTreeItem = this.findTreeItemById(this.tree, item.id)
-              if (sourceTreeItem) await this.fetchFoldersAndPages(sourceTreeItem)
+              if (sourceTreeItem && batchMoveFlag) await this.fetchFoldersAndPages(sourceTreeItem)
             }
           }
         })
@@ -1065,9 +1078,9 @@ export default {
   }
 }
 
-.icon-operate {
-  float:right;
-  margin-left: 8px;
+.icon-group {
+  position: absolute;
+  right: 2em;
 }
 
 .icon-operate:hover {
