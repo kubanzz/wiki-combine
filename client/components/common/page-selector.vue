@@ -587,7 +587,10 @@ export default {
       const result = _.get(resp, 'data.pages.batchMove')
 
       if (result.responseResult.succeeded === true) {
-        console.debug('openOnClick：%o', this.openOnClick)
+        console.log('openOnClick：%o', this.openOnClick)
+
+        if (this.openNodes.indexOf(0) === -1) this.openNodes.push(0)
+        if (this.batchMove_openNodes.indexOf(0) === -1) this.batchMove_openNodes.push(0)
 
         // 需要刷新的节点即为当前打开的 + 当前选中的
         let openNodesCopy = this.openNodes.slice()
@@ -599,7 +602,7 @@ export default {
         await openNodesCopy.sort((a, b) => a - b)
         await batchMoveOpenNodesCopy.sort((a, b) => a - b)
 
-        console.debug('排序后的数组：%o', this.openNodes)
+        console.log('排序后的数组：%o', openNodesCopy)
         for (let i = 0; i < openNodesCopy.length; i++) {
           console.debug('开始查找前节点数据：id：%o --- tree：%o', openNodesCopy[i], this.tree)
           let item = await this.findTreeItemById(this.tree, openNodesCopy[i])

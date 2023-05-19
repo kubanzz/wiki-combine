@@ -918,10 +918,31 @@ module.exports = class Page extends Model {
         }).returning('*')
 
       // 删除被更新到的文件夹的目录树
-      await WIKI.models.knex.table('pageTree')
-        .where('path', 'like', `${oldPath}%`) // 删除文件目录树
-        .orWhere('path', opts.oldPath) // 删除文件夹目录树
-        .delete()
+      if (updatedPages.length > 0) {
+        await WIKI.models.knex.table('pageTree')
+          .where('path', 'like', `${oldPath}%`) // 删除文件目录树
+          .orWhere('path', opts.oldPath) // 删除文件夹目录树
+          .delete()
+      } else {
+        let newPathTmp = newPath.trim().replace(/^\/|\/$/g, '')
+        let oldPathTmp = oldPath.trim().replace(/^\/|\/$/g, '')
+        let pathArry = newPathTmp.split('/')
+
+        // 更新空文件夹路径
+        await WIKI.models.knex.table('pageTree')
+          .where('path', oldPathTmp)
+          .update({
+            'path': newPathTmp,
+            'title': pathArry[pathArry.length - 1]
+          })
+
+        // 更新空文件夹下子文件夹路径
+        await WIKI.models.knex.table('pageTree')
+          .where('path', 'like', `${oldPath}%`)
+          .update({
+            'path': WIKI.models.knex.raw(`concat('${newPath}', substring(path, ${oldPath.length + 1}))`)
+          })
+      }
     } else {
       // 更新移动的文件路径（移动文件）
       updatedPages = await WIKI.models.knex.table('pages')

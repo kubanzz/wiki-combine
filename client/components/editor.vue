@@ -3,6 +3,7 @@
     nav-header(dense)
       template(slot='mid')
         v-text-field.editor-title-input(
+          id='input-title'
           dark
           solo
           flat
@@ -159,6 +160,7 @@ export default {
   },
   data() {
     return {
+      isEditTitle: false,
       isSaving: false,
       isConflict: false,
       dialogProps: false,
@@ -271,8 +273,8 @@ export default {
     })
 
     this.timer = setInterval(() => {
-      console.info('dialogEditorSelector：%o === dialogProps：%o === isConflict：%o === isDirty：%o', this.dialogEditorSelector, this.dialogProps, this.dialogConfict, this.isDirty)
-      if (!this.dialogConfict && !this.dialogEditorSelector && !this.dialogProps && this.isDirty) {
+      console.debug('isEditTitle：%o === dialogEditorSelector：%o === dialogProps：%o === isConflict：%o === isDirty：%o', this.isEditTitle, this.dialogEditorSelector, this.dialogProps, this.dialogConfict, this.isDirty)
+      if (!this.isEditTitle && !this.dialogConfict && !this.dialogEditorSelector && !this.dialogProps && this.isDirty) {
         this.autoSave()
       }
     }, 5000)
@@ -282,6 +284,19 @@ export default {
     })
     // this.$store.set('editor/mode', 'edit')
     // this.currentEditor = `editorApi`
+
+    this.$nextTick(() => {
+      setTimeout(() => {
+        let inputTitle = document.getElementById(`input-title`)
+        inputTitle.addEventListener('focus', async () => {
+          this.isEditTitle = true
+        })
+
+        inputTitle.addEventListener('blur', async () => {
+          this.isEditTitle = false
+        })
+      }, 200)
+    })
   },
   beforeDestroy() {
     clearInterval(this.autoSaveTimer)
