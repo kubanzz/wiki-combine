@@ -29,6 +29,8 @@ services:
       DB_PASS: wikijsrocks
       DB_NAME: wiki
     restart: unless-stopped
+    volumes:
+      - node-modules:/wiki/node_modules
     ports:
       - "80:3000"
       - "443:3443"
@@ -38,3 +40,4 @@ services:
 
 volumes:
   db-data:
+  node-modules:

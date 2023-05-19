@@ -19,8 +19,8 @@ ENV YARN_REGISTRY=https://registry.npm.taobao.org/
 RUN yarn cache clean
 RUN yarn --frozen-lockfile --non-interactive
 RUN yarn build
-RUN rm -rf /wiki/node_modules
-RUN yarn --production --frozen-lockfile --non-interactive
+# RUN rm -rf /wiki/node_modules
+# RUN yarn --production --frozen-lockfile --non-interactive
 
 # ENV NPM_REGISTRY=https://registry.npm.taobao.org/
 # RUN npm config set registry $NPM_REGISTRY
