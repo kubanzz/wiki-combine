@@ -181,6 +181,7 @@ type PageMutation {
 input SourceObject {
   path: String!
   isFolder: Boolean!
+  title: String!
 }
 
 type PageResponse {

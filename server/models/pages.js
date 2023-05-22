@@ -907,6 +907,8 @@ module.exports = class Page extends Model {
       // newPath非根目录则补'/'
       if (newPath !== '') {
         newPath += '/'
+      } else {
+        throw new WIKI.Error.FolderNameCanNotEmpty()
       }
 
       // 避免更新到文件名前缀与路径相同的
@@ -1152,8 +1154,13 @@ module.exports = class Page extends Model {
 
     for (let i = 0; i < deleteObjectArray.length; i++) {
       const isFolder = deleteObjectArray[i].isFolder
+      const title = deleteObjectArray[i].title
       // 去除地址前后的'/'
       let deletePath = deleteObjectArray[i].path.trim().replace(/^\/|\/$/g, '')
+
+      if (deletePath === '' || title.trim() === '') {
+        throw new WIKI.Error.DeleteRootPathForbidden()
+      }
 
       if (isFolder) {
         // 避免更新到文件名前缀与路径相同的

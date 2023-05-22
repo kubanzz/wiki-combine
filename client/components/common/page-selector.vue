@@ -466,8 +466,9 @@ export default {
   },
   methods: {
     async batchDelete() {
+      console.debug(' checkBoxSelectedArray：%o', this.checkBoxSelectedArray)
       const deleteObjectArray = this.checkBoxSelectedArray.map(obj => {
-        return { path: obj.path, isFolder: obj.isFolder }
+        return { path: obj.path, title: obj.title, isFolder: obj.isFolder }
       })
 
       if (deleteObjectArray.length === 0) {
@@ -586,6 +587,7 @@ export default {
       console.debug('batch-move-resp：%o', resp)
       const result = _.get(resp, 'data.pages.batchMove')
 
+      let respStyle = 'error'
       if (result.responseResult.succeeded === true) {
         console.log('openOnClick：%o', this.openOnClick)
 
@@ -636,12 +638,14 @@ export default {
         await this.$refs.moveSourceTreeview.updateAll()
         this.openNodes = openNodesCopy
         this.batchMove_openNodes = batchMoveOpenNodesCopy
+
+        respStyle = 'success'
       }
 
       console.debug('文件迁移后：tree：%o === this.batchMove_tree：%o', this.tree, this.batchMove_tree)
       this.$store.commit('showNotification', {
         message: result.responseResult.message,
-        style: 'success',
+        style: respStyle,
         icon: 'check'
       })
     },
@@ -715,6 +719,7 @@ export default {
           this.checkBoxSelectedArray.push({
             treeId: item.id,
             pageId: item.pageId,
+            title: item.title,
             path: item.path,
             isFolder: item.isFolder,
             ancestors: item.ancestors,
@@ -833,6 +838,7 @@ export default {
     },
     async editFolder(item) {
       item.editing = true
+      const oldTitleName = item.title
       // 等待tree-view下拉目录渲染完毕
       await new Promise(resolve => {
         setTimeout(resolve, 100)
@@ -841,25 +847,49 @@ export default {
         let input = document.getElementById(`input-${item.id}`)
         console.log('item：%o ===== input：%o', item, input)
 
-        input.focus()
-        input.select()
+        //- input.focus()
+        //- input.select()
 
         input.addEventListener('blur', async () => {
           if (item.editing === true) {
             item.editing = false
-            await this.renameFolder(item, input.value)
+            let inputVal = input.value.trim()
+            console.debug('inputVal：[%s]', inputVal)
+            if (inputVal === '') {
+              item.title = oldTitleName
+              this.$store.commit('showNotification', {
+                message: '文件夹名不允许为空',
+                style: 'error',
+                icon: 'check'
+              })
+            } else {
+              await this.renameFolder(item, inputVal, oldTitleName)
+            }
           }
         })
 
         input.addEventListener('keydown', async (event) => {
           if (event.key === 'Enter' || event.key === 'Esc') {
-            item.editing = false
-            await this.renameFolder(item, input.value)
+            if (item.editing === true) {
+              item.editing = false
+              let inputVal = input.value.trim()
+              console.debug('inputVal：[%s]', inputVal)
+              if (inputVal === '') {
+                item.title = oldTitleName
+                this.$store.commit('showNotification', {
+                  message: '文件夹名不允许为空',
+                  style: 'error',
+                  icon: 'check'
+                })
+              } else {
+                await this.renameFolder(item, inputVal, oldTitleName)
+              }
+            }
           }
         })
       })
     },
-    async renameFolder(item, newName) {
+    async renameFolder(item, newName, oldName) {
       let oldPath = item.path
       let newPath = _.initial(item.path.split('/')).join('/') + ('/' + newName)
 
@@ -873,6 +903,7 @@ export default {
       let targetFileItem = this.findTreeItemById(this.batchMove_tree, item.parent)
       let targetFileList = targetFileItem ? targetFileItem.children : []
 
+      console.log('sourceFileList：%o ===== targetFileList：%o', sourceFileList, targetFileList)
       let fileList = [...sourceFileList, ...targetFileList]
       let index = fileList.findIndex(file => file.path === newPath)
       console.debug('filelist: %o', fileList)
@@ -882,7 +913,7 @@ export default {
           style: 'error',
           icon: 'check'
         })
-        item.title = _.last(item.path.split('/'))
+        item.title = oldName
         return
       }
       console.log('newPath：' + newPath)
@@ -895,17 +926,30 @@ export default {
       //- this.fetchFoldersAndPages(sourceUpdateItem)
       //- this.fetchFolders(targetUpdateItem)
 
-      await this.openNodes.sort()
-      await this.batchMove_openNodes.sort()
-      for (let i = 0; i < this.openNodes.length; i++) {
-        let item = await this.findTreeItemById(this.tree, this.openNodes[i])
+      console.debug(' item：%o', item)
+
+      let openNodes = this.openNodes
+      let batchMoveOpenNodes = this.batchMove_openNodes
+
+      if (openNodes.indexOf(0) === -1) openNodes.push(0)
+      if (batchMoveOpenNodes.indexOf(0) === -1) batchMoveOpenNodes.push(0)
+
+      if (openNodes.indexOf(item.parent) === -1) openNodes.push(item.parent)
+      if (batchMoveOpenNodes.indexOf(item.parent) === -1) batchMoveOpenNodes.push(item.parent)
+
+      await openNodes.sort()
+      await batchMoveOpenNodes.sort()
+
+      console.log(' openNodes：%o ================  batchMove_openNodes：%o', openNodes, batchMoveOpenNodes)
+      for (let i = 0; i < openNodes.length; i++) {
+        let item = await this.findTreeItemById(this.tree, openNodes[i])
         console.debug('%o--sourceTree: %o === targetTree-%o: %o', item, this.tree, this.batchMove_tree)
         if (this.mode === 'batch-move') await this.fetchFoldersAndPages(item)
         else await this.fetchFolders(item)
       }
 
-      for (let i = 0; i < this.batchMove_openNodes.length; i++) {
-        let item = await this.findTreeItemById(this.batchMove_tree, this.batchMove_openNodes[i])
+      for (let i = 0; i < batchMoveOpenNodes.length; i++) {
+        let item = await this.findTreeItemById(this.batchMove_tree, batchMoveOpenNodes[i])
         await this.fetchFolders(item)
       }
     },
@@ -939,13 +983,22 @@ export default {
           isFolder: isFolder
         }
       })
-      console.log('add page resp：', resp)
-      resp = _.get(resp, 'data.pages.updateFolderPath', {})
-      this.$store.commit('showNotification', {
-        message: resp.responseResult.message,
-        style: 'success',
-        icon: 'check'
-      })
+      console.log('update folder name resp：', resp)
+      resp = _.get(resp, 'data.pages.updateFolderPath.responseResult', {})
+
+      if (resp.succeeded === true) {
+        this.$store.commit('showNotification', {
+          message: resp.message,
+          style: 'success',
+          icon: 'check'
+        })
+      } else {
+        this.$store.commit('showNotification', {
+          message: resp.message,
+          style: 'error',
+          icon: 'check'
+        })
+      }
     },
     async createFolder(item, batchMoveFlag = false) {
       this.newName = ''
@@ -990,18 +1043,28 @@ export default {
         input.addEventListener('blur', async () => {
           if (newFolder.editing === true) {
             newFolder.editing = false
-            if (item.path !== undefined) {
-              newFolder.path += item.path
-            }
-            newFolder.path += ('/' + input.value)
-            console.log('item.path：' + newFolder.path)
-            let uploadFolderId = await this.uploadFolder(input, item, folderId)
-            newFolder.id = uploadFolderId
-            await this.fetchFolders(item)
+            let inputVal = input.value.trim()
+            if (inputVal === '') {
+              this.$store.commit('showNotification', {
+                message: '文件夹名不允许为空',
+                style: 'error',
+                icon: 'check'
+              })
+              item.children.pop()
+            } else {
+              if (item.path !== undefined) {
+                newFolder.path += item.path
+              }
+              newFolder.path += ('/' + input.value)
+              console.log('item.path：' + newFolder.path)
+              let uploadFolderId = await this.uploadFolder(input, item, folderId)
+              newFolder.id = uploadFolderId
+              await this.fetchFolders(item)
 
-            console.log(' =============== batchMoveFlag：' + batchMoveFlag)
-            let sourceTreeItem = this.findTreeItemById(this.tree, item.id)
-            if (sourceTreeItem && batchMoveFlag) await this.fetchFoldersAndPages(sourceTreeItem)
+              console.log(' batchMoveFlag：' + batchMoveFlag)
+              let sourceTreeItem = this.findTreeItemById(this.tree, item.id)
+              if (sourceTreeItem && batchMoveFlag) await this.fetchFoldersAndPages(sourceTreeItem)
+            }
           }
         })
 
@@ -1009,16 +1072,28 @@ export default {
           if (event.key === 'Enter' || event.key === 'Esc') {
             if (newFolder.editing === true) {
               newFolder.editing = false
-              if (item.path !== undefined) {
-                newFolder.path += item.path
-              }
-              newFolder.path += ('/' + input.value)
-              let uploadFolderId = await this.uploadFolder(input, item, folderId)
-              newFolder.id = uploadFolderId
-              await this.fetchFolders(item)
+              let inputVal = input.value.trim()
+              if (inputVal === '') {
+                this.$store.commit('showNotification', {
+                  message: '文件夹名不允许为空',
+                  style: 'error',
+                  icon: 'check'
+                })
+                item.children.pop()
+              } else {
+                if (item.path !== undefined) {
+                  newFolder.path += item.path
+                }
+                newFolder.path += ('/' + input.value)
+                console.log('item.path：' + newFolder.path)
+                let uploadFolderId = await this.uploadFolder(input, item, folderId)
+                newFolder.id = uploadFolderId
+                await this.fetchFolders(item)
 
-              let sourceTreeItem = this.findTreeItemById(this.tree, item.id)
-              if (sourceTreeItem && batchMoveFlag) await this.fetchFoldersAndPages(sourceTreeItem)
+                console.log(' batchMoveFlag：' + batchMoveFlag)
+                let sourceTreeItem = this.findTreeItemById(this.tree, item.id)
+                if (sourceTreeItem && batchMoveFlag) await this.fetchFoldersAndPages(sourceTreeItem)
+              }
             }
           }
         })

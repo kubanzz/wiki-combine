@@ -248,6 +248,14 @@ module.exports = {
   TargetPageExist: CustomError('TargetPageExist', {
     message: '目标文件夹存在重复文件.',
     code: 9002
+  }),
+  FolderNameCanNotEmpty: CustomError('FolderNameCanNotEmpty', {
+    message: '文件夹名不能为空',
+    code: 9003
+  }),
+  DeleteRootPathForbidden: CustomError('DeleteRootPathForbidden', {
+    message: '不能批量删除路径为根目录的文件',
+    code: 9004
   })
 
 }
