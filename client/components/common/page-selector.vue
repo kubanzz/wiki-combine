@@ -552,7 +552,7 @@ export default {
         return
       }
       const sourceObjectArray = this.checkBoxSelectedArray.map(obj => {
-        return { path: obj.path, isFolder: obj.isFolder }
+        return { path: obj.path, title: obj.title, isFolder: obj.isFolder }
       })
       console.log('移动文件：%o --- 目的地文件夹：%o --- 当前树结构：%o', this.checkBoxSelectedArray, this.batchMove_currentPath, this.all)
 
