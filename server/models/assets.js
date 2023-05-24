@@ -7,6 +7,7 @@ const fs = require('fs-extra')
 const _ = require('lodash')
 const assetHelper = require('../helpers/asset')
 const Promise = require('bluebird')
+const { v4: uuid } = require('uuid')
 
 /**
  * Users model
@@ -139,6 +140,17 @@ module.exports = class Asset extends Model {
           data: fileBuffer
         })
       }
+
+      // let uucode = uuid().replace(/-/g, '')
+      // let fileName = fileInfo.name + uucode + fileInfo.ext
+
+      // WIKI.minio.putObject(fileName, fileBuffer, (err, data) => {
+      //   if (err) {
+      //     WIKI.logger.error('图片上传minio失败')
+      //   } else {
+      //     let imageUrl = 'http://' + WIKI.config.minio.Region + ':' + WIKI.config.minio.port + '/' + WIKI.config.minio.bucketName + '/' + fileName
+      //   }
+      // })
 
       // Move temp upload to cache
       if (opts.mode === 'upload') {

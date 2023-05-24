@@ -27,7 +27,7 @@ logFormat: default
 offline: false
 
 ha: false
-dataPath: D://data/wiki/data
+dataPath: /data/wiki/data
 bodyParserLimit: 5mb
 
-logPath: D://logs/wiki
+logPath: /logs/wiki
